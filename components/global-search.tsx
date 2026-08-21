@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import {
+  Command,
   CommandDialog,
   CommandInput,
   CommandList,
@@ -89,26 +90,28 @@ export function GlobalSearchDialog({
       title="Search Academia O1"
       description="Search elements, molecules, tools, and simulations"
     >
-      <CommandInput placeholder="Search elements, molecules, tools…" value={query} onValueChange={setQuery} />
-      <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
-        {Array.from(grouped.entries()).map(([category, entries]) => {
-          const meta = CATEGORY_META[category]
-          return (
-            <CommandGroup key={category} heading={meta.label}>
-              {entries.slice(0, category === "element" ? 12 : 8).map((entry) => (
-                <CommandItem key={entry.id} value={entry.id} onSelect={() => handleSelect(entry)}>
-                  <meta.icon className="text-muted-foreground" />
-                  <div className="flex flex-col">
-                    <span>{entry.title}</span>
-                    {entry.subtitle && <span className="text-xs text-muted-foreground">{entry.subtitle}</span>}
-                  </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          )
-        })}
-      </CommandList>
+      <Command>
+        <CommandInput placeholder="Search elements, molecules, tools…" value={query} onValueChange={setQuery} />
+        <CommandList>
+          <CommandEmpty>No results found.</CommandEmpty>
+          {Array.from(grouped.entries()).map(([category, entries]) => {
+            const meta = CATEGORY_META[category]
+            return (
+              <CommandGroup key={category} heading={meta.label}>
+                {entries.slice(0, category === "element" ? 12 : 8).map((entry) => (
+                  <CommandItem key={entry.id} value={entry.id} onSelect={() => handleSelect(entry)}>
+                    <meta.icon className="text-muted-foreground" />
+                    <div className="flex flex-col">
+                      <span>{entry.title}</span>
+                      {entry.subtitle && <span className="text-xs text-muted-foreground">{entry.subtitle}</span>}
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )
+          })}
+        </CommandList>
+      </Command>
     </CommandDialog>
   )
 }
