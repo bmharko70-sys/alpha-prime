@@ -90,6 +90,22 @@ export function getElementByNumber(n: number): ElementData | undefined {
   return ELEMENTS_BY_NUMBER[n]
 }
 
+/**
+ * Derives the number of valence electrons from group number using the
+ * standard main-group rule (group 1-2 => group number; group 13-18 =>
+ * group number - 10). Transition metals (groups 3-12) and f-block elements
+ * don't follow a single simple rule, so we fall back to the outermost
+ * shell's electron count from the computed configuration.
+ */
+export function getValenceElectrons(element: ElementData): number | null {
+  if (element.group === 1 || element.group === 2) return element.group
+  if (element.group && element.group >= 13 && element.group <= 18) {
+    return element.group === 18 && element.symbol === "He" ? 2 : element.group - 10
+  }
+  const shells = element.electronsPerShell
+  return shells.length > 0 ? shells[shells.length - 1] : null
+}
+
 export function searchElements(query: string): ElementData[] {
   const q = query.trim().toLowerCase()
   if (!q) return []
