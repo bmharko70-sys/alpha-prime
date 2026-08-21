@@ -8,7 +8,7 @@ import { Send, Square, Trash2 } from "lucide-react"
 
 export function AiTutor() {
   const [input, setInput] = React.useState("")
-  const { messages, sendMessage, status, stop, setMessages } = useChat({
+  const { messages, sendMessage, status, stop, setMessages, regenerate } = useChat({
     transport: new DefaultChatTransport({ api: "/api/chat" }),
   })
   const busy = status === "submitted" || status === "streaming"
@@ -23,8 +23,8 @@ export function AiTutor() {
               {message.parts.map((part, index) => part.type === "text" ? <p key={index} className="whitespace-pre-wrap">{part.text}</p> : null)}
             </div>
           ))}
-          {busy && <p className="text-xs text-muted-foreground">Academia is thinking…</p>}
-          {status === "error" && <p className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">The AI assistant couldn't connect. Please try again.</p>}
+          {busy && <div className="ai-thinking flex items-center gap-3 text-xs text-muted-foreground" role="status"><span className="ai-thinking-nodes" aria-hidden="true"><i /><i /><i /></span> Academia is thinking…</div>}
+          {status === "error" && <div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"><span>AI Gateway is unavailable or not configured. No answer was generated.</span><Button type="button" variant="outline" size="sm" onClick={() => regenerate()}>Retry</Button></div>}
         </div>
         <form className="mt-5 flex gap-2" onSubmit={(event) => { event.preventDefault(); if (input.trim() && !busy) { sendMessage({ text: input.trim() }); setInput("") } }}>
           <textarea value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229) { event.preventDefault(); event.currentTarget.form?.requestSubmit() } }} disabled={busy} placeholder="Ask Academia…" aria-label="Message Academia" className="min-h-11 flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary" />

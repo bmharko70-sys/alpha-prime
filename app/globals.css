@@ -170,6 +170,27 @@
   to { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
+@keyframes page-field-drift {
+  from { transform: translate3d(-2%, -1%, 0) rotate(0deg); }
+  to { transform: translate3d(2%, 1%, 0) rotate(8deg); }
+}
+
+@keyframes page-field-drift-reverse {
+  from { transform: translate3d(2%, 1%, 0) rotate(0deg); }
+  to { transform: translate3d(-2%, -1%, 0) rotate(-8deg); }
+}
+
+@keyframes page-node-pulse {
+  0%, 100% { opacity: .2; transform: scale(.75); }
+  50% { opacity: .8; transform: scale(1); }
+}
+
+@keyframes route-veil {
+  from { opacity: 0; }
+  25% { opacity: 1; }
+  to { opacity: 0; }
+}
+
 .lab-grid,
 .intro-grid {
   background-image: linear-gradient(rgba(125, 211, 252, 0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(125, 211, 252, 0.045) 1px, transparent 1px);
@@ -183,8 +204,38 @@
 .intro-orbit { animation: intro-orbit 28s linear infinite; }
 .intro-orbit-delayed { animation-duration: 42s; animation-direction: reverse; }
 
+.page-motion { position: absolute; inset: 0; overflow: hidden; pointer-events: none; opacity: .82; }
+.page-motion-grid { position: absolute; inset: 0; background-image: linear-gradient(rgb(125 211 252 / 3%) 1px, transparent 1px), linear-gradient(90deg, rgb(125 211 252 / 3%) 1px, transparent 1px); background-size: 52px 52px; mask-image: linear-gradient(to bottom, black, transparent 75%); }
+.page-motion-field { position: absolute; left: 50%; top: 6rem; width: min(80vw, 42rem); aspect-ratio: 1; transform: translateX(-50%); border-radius: 999px; border: 1px solid rgb(125 211 252 / 8%); filter: blur(.2px); animation: page-field-drift 34s ease-in-out infinite alternate; }
+.page-motion-field-two { width: min(60vw, 30rem); top: 10rem; border-color: rgb(253 230 138 / 7%); animation-name: page-field-drift-reverse; animation-duration: 43s; }
+.page-motion-node { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: rgb(165 243 252); box-shadow: 0 0 18px 5px rgb(103 232 249 / 28%); animation: page-node-pulse 4s ease-in-out infinite; }
+.page-motion .node-one { left: 18%; top: 24%; }
+.page-motion .node-two { left: 78%; top: 30%; animation-delay: 1s; }
+.page-motion .node-three { left: 66%; top: 72%; animation-delay: 2s; }
+.page-motion .node-four { left: 34%; top: 64%; animation-delay: 3s; }
+.page-motion-line { position: absolute; height: 1px; width: 18rem; transform-origin: left center; background: linear-gradient(90deg, transparent, rgb(125 211 252 / 14%), transparent); }
+.page-motion .line-one { left: 18%; top: 24%; transform: rotate(18deg); }
+.page-motion .line-two { left: 34%; top: 64%; transform: rotate(-24deg); }
+.page-motion .line-three { left: 66%; top: 72%; transform: rotate(12deg); }
+.page-motion-physics .page-motion-field { border-radius: 30%; transform: translateX(-50%) skewY(-7deg) rotate(-12deg); }
+.page-motion-physics .page-motion-line { background: linear-gradient(90deg, transparent, rgb(125 211 252 / 22%), transparent); }
+.page-motion-chemistry .page-motion-field { border-style: dashed; }
+.page-motion-biology .page-motion-field { border-radius: 40% 60% 55% 45%; border-color: rgb(134 239 172 / 12%); }
+.page-motion-biology .page-motion-grid { background-size: 68px 68px; }
+.page-motion-ai .page-motion-field { border-color: rgb(196 181 253 / 12%); }
+.page-motion-ai .page-motion-node { background: rgb(196 181 253); box-shadow: 0 0 18px 5px rgb(167 139 250 / 28%); }
+.route-transition-veil { position: fixed; inset: 0; z-index: 90; pointer-events: none; opacity: 0; background: rgb(125 211 252 / 5%); }
+.route-transition-veil-visible { animation: route-veil 260ms ease-out both; }
+.periodic-entry { animation: periodic-entry-in 420ms ease-out both; }
+.ai-thinking-nodes { display: inline-flex; align-items: center; gap: 4px; }
+.ai-thinking-nodes i { display: block; width: 5px; height: 5px; border-radius: 999px; background: rgb(196 181 253); box-shadow: 0 0 10px rgb(167 139 250 / 55%); animation: page-node-pulse 1.2s ease-in-out infinite; }
+.ai-thinking-nodes i:nth-child(2) { animation-delay: 160ms; }
+.ai-thinking-nodes i:nth-child(3) { animation-delay: 320ms; }
+@keyframes periodic-entry-in { from { opacity: 0; transform: translateY(5px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
 @media (prefers-reduced-motion: reduce) {
-  .lab-orbit, .lab-orbit-two, .lab-particle, .intro-orbit, .animate-spin { animation: none !important; }
+  .lab-orbit, .lab-orbit-two, .lab-particle, .intro-orbit, .page-motion-field, .page-motion-node, .route-transition-veil, .periodic-entry, .ai-thinking-nodes i, .animate-spin { animation: none !important; }
+  .page-motion { opacity: .45; }
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
 }
 

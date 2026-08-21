@@ -22,10 +22,23 @@ export function IntroExperience() {
   }, [])
 
   useEffect(() => {
-    if (!visible || reduced) return
-    const timer = window.setInterval(() => setStage((current) => Math.min(current + 1, 4)), 900)
+    if (!visible) return
+    if (reduced) {
+      setStage(4)
+      return
+    }
+    const timer = window.setInterval(() => setStage((current) => Math.min(current + 1, 4)), 520)
     return () => window.clearInterval(timer)
   }, [visible, reduced])
+
+  useEffect(() => {
+    if (!visible) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") dismiss()
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [visible])
 
   if (!visible) return null
 
@@ -34,8 +47,11 @@ export function IntroExperience() {
     setVisible(false)
   }
 
+  const progress = Math.round((stage / 4) * 100)
+
   return (
     <div className="intro-experience fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-[#071018] text-slate-100" role="dialog" aria-label="Academia O1 initialization">
+      <button type="button" onClick={dismiss} aria-label="Close introduction" className="absolute right-5 top-5 z-10 border border-slate-700 px-3 py-2 font-mono text-[10px] tracking-[0.14em] text-slate-400 transition-colors hover:border-cyan-200/50 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200">CLOSE</button>
       <div className="intro-grid absolute inset-0 opacity-60" />
       <div className="intro-orbit absolute left-1/2 top-1/2 size-[min(70vw,34rem)] -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/15" />
       <div className="intro-orbit intro-orbit-delayed absolute left-1/2 top-1/2 size-[min(48vw,23rem)] -translate-x-1/2 -translate-y-1/2 rounded-full border border-amber-200/10" />
@@ -49,6 +65,7 @@ export function IntroExperience() {
           <Atom className="size-12 text-cyan-200" strokeWidth={1.2} />
         </div>
         <div className="space-y-4">
+          <div className="mx-auto mb-4 flex max-w-xs items-center gap-3" aria-label={`Initialization ${progress}%`}><div className="h-1 flex-1 overflow-hidden bg-slate-800"><div className="h-full bg-cyan-200 transition-[width] duration-500" style={{ width: `${progress}%` }} /></div><span className="font-mono text-[10px] text-cyan-200/70">{progress}%</span></div>
           <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-slate-400">Initializing scientific workspace</p>
           <h1 className="font-mono text-3xl font-medium tracking-tight text-balance sm:text-5xl">Observe. Model. Understand.</h1>
           <p className="mx-auto max-w-lg text-sm leading-6 text-slate-400">A quiet instrument for exploring the structures and systems that make our world work.</p>

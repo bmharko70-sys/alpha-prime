@@ -97,9 +97,10 @@ export function PeriodicTableGrid() {
                       gridRow: row,
                       gridColumn: col,
                       backgroundColor: heatmap === "none" ? categoryColor(el.category) : undefined,
+                      animationDelay: `${(el.atomicNumber % 12) * 35}ms`,
                     }}
                     className={cn(
-                      "group relative flex aspect-square flex-col items-center justify-center rounded-sm border border-black/10 p-0.5 text-center transition-transform hover:z-10 hover:scale-110 hover:shadow-lg dark:border-white/10",
+                      "periodic-entry group relative flex aspect-square flex-col items-center justify-center rounded-sm border border-black/10 p-0.5 text-center transition-transform hover:z-10 hover:scale-110 hover:shadow-lg dark:border-white/10",
                       dimmed && "opacity-20",
                     )}
                   />
