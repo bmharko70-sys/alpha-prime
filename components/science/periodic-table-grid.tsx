@@ -7,6 +7,7 @@ import type { ElementCategory, ElementData } from "@/lib/science/types"
 import { categoryColor } from "@/lib/science/chem/category-colors"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Input } from "@/components/ui/input"
 
 const LANTHANIDE_ROW = 9
 const ACTINIDE_ROW = 10
@@ -31,6 +32,10 @@ function heatmapValue(el: ElementData, prop: HeatmapProperty): number | null {
 export function PeriodicTableGrid() {
   const [heatmap, setHeatmap] = useState<HeatmapProperty>("none")
   const [activeCategory, setActiveCategory] = useState<ElementCategory | "all">("all")
+  const [query, setQuery] = useState("")
+
+  const normalizedQuery = query.trim().toLowerCase()
+  const matchesQuery = (el: ElementData) => !normalizedQuery || el.name.toLowerCase().includes(normalizedQuery) || el.symbol.toLowerCase().includes(normalizedQuery) || String(el.atomicNumber) === normalizedQuery
 
   const { min, max } = useMemo(() => {
     if (heatmap === "none") return { min: 0, max: 1 }
@@ -41,6 +46,8 @@ export function PeriodicTableGrid() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
+        <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, symbol, or atomic number" aria-label="Search periodic table" className="h-9 max-w-xs" />
+        {query && <span className="text-xs text-muted-foreground">{ELEMENTS.filter(matchesQuery).length} matches</span>}
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Property heatmap</span>
         <div className="flex flex-wrap gap-1">
           {(
@@ -79,13 +86,13 @@ export function PeriodicTableGrid() {
           const { row, col } = gridPosition(el)
           const value = heatmapValue(el, heatmap)
           const intensity = value != null ? (value - min) / Math.max(max - min, 1e-6) : null
-          const dimmed = activeCategory !== "all" && el.category !== activeCategory
+          const dimmed = (activeCategory !== "all" && el.category !== activeCategory) || !matchesQuery(el)
           return (
             <Tooltip key={el.atomicNumber}>
               <TooltipTrigger
                 render={
                   <Link
-                    href={`/chemistry/elements/${el.symbol.toLowerCase()}`}
+                    href={`/chemistry/element/${el.symbol.toLowerCase()}`}
                     style={{
                       gridRow: row,
                       gridColumn: col,
@@ -135,7 +142,7 @@ export function PeriodicTableGrid() {
             </Tooltip>
           )
         })}
-        {/* f-block placeholder markers in the main grid */}
+        {/* f-block reference markers in the main grid */}
         <div
           style={{ gridRow: 6, gridColumn: 3 }}
           className="flex aspect-square items-center justify-center rounded-sm border border-dashed border-border text-[8px] text-muted-foreground"

@@ -82,7 +82,7 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <p className="px-2 py-1 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
-          Chemistry module live · Physics & Biology in progress
+          Physics · Chemistry · Biology modules live
         </p>
       </SidebarFooter>
     </Sidebar>
