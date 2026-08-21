@@ -22,17 +22,17 @@ export function AppSidebar() {
   const pathname = usePathname()
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" className="border-slate-800/80">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" render={<Link href="/" />}>
-              <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
+              <div className="flex size-8 items-center justify-center border border-cyan-200/30 bg-cyan-200/10 text-cyan-100">
                 <FlaskConical className="size-4" />
               </div>
               <div className="flex flex-col gap-0.5 leading-none">
-                <span className="font-semibold tracking-tight">Academia O1</span>
-                <span className="text-xs text-muted-foreground">Science Laboratory</span>
+                <span className="font-mono font-semibold tracking-tight">Academia O1</span>
+                <span className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">SCIENCE LABORATORY</span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
