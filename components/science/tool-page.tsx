@@ -1,6 +1,10 @@
 "use client"
 
 import * as React from "react"
+import { Canvas } from "@react-three/fiber"
+import { OrbitControls } from "@react-three/drei"
+import { MoleculeModel3D, type MoleculeRenderMode } from "@/components/science/molecule-model-3d"
+import type { MoleculeData } from "@/lib/science/types"
 import { balanceEquation, classifyReaction, type BalancedEquation } from "@/lib/science/chem/equation-balancer"
 import { parseFormula } from "@/lib/science/chem/formula"
 import { strongAcidPh, strongBasePh, weakAcidPh, weakBasePh, titrationPh } from "@/lib/science/chem/acid-base"
@@ -54,7 +58,20 @@ export function AcidBaseTool() {
 
 function Metric({ label, value }: { label: string; value: string }) { return <div className="rounded-xl border border-border bg-muted/40 p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-2 text-xl font-semibold capitalize">{value}</p></div> }
 
-export function MolecularTool({ bonding = false }: { bonding?: boolean }) { const [selected, setSelected] = React.useState(MOLECULES[0]); return <ToolPage eyebrow="Chemistry / molecular structure" title={bonding ? "Bonding & Lewis structures" : "Molecular viewer"} description={bonding ? "Compare bond order, geometry, polarity, and idealized Lewis-style structure data." : "Inspect idealized 3D molecular presets with geometry and polarity annotations."}><div className="grid gap-6 lg:grid-cols-[280px_1fr]"><Panel title="Molecule library"><div className="flex flex-col gap-2">{MOLECULES.slice(0, 10).map((m) => <button key={m.formula} onClick={() => setSelected(m)} className={`rounded-lg px-3 py-3 text-left text-sm transition-colors ${selected.formula === m.formula ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}><span className="font-mono">{m.formula}</span><span className="ml-2 opacity-70">{m.name}</span></button>)}</div></Panel><Panel title="Selected structure"><div className="grid gap-4 sm:grid-cols-2"><Metric label="Compound" value={selected.name} /><Metric label="Formula" value={selected.formula} /><Metric label="Geometry" value={selected.geometry} /><Metric label="Polarity" value={selected.polarity} /></div><p className="mt-5 leading-7 text-muted-foreground">{selected.description}</p><div className="mt-5 rounded-xl bg-muted/50 p-4 font-mono text-sm">{selected.atoms.map((a, i) => `${i + 1}: ${a.element}  `).join("")}<br />Bonds: {selected.bonds.map((b) => `${b.order}×`).join(" ")}</div></Panel></div></ToolPage> }
+export function MolecularTool({ bonding = false }: { bonding?: boolean }) {
+  const [selected, setSelected] = React.useState<MoleculeData>(MOLECULES[0])
+  const [query, setQuery] = React.useState("water")
+  const [mode, setMode] = React.useState<MoleculeRenderMode>("ball-and-stick")
+  const [loading, setLoading] = React.useState(false)
+  const [error, setError] = React.useState("")
+  async function loadVerified() { setLoading(true); setError(""); try { const response = await fetch(`/api/pubchem?q=${encodeURIComponent(query)}`); const data = await response.json(); if (!response.ok) throw new Error(data.error); setSelected(data) } catch (caught) { setError(caught instanceof Error ? caught.message : "Unable to load structure") } finally { setLoading(false) } }
+  return <ToolPage eyebrow="Chemistry / molecule & 3D structure lab" title="Real structures, not approximations." description="Load a verified PubChem 3D conformer, then inspect the same atom coordinates and bond orders in an interactive ball-and-stick model.">
+    <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+      <Panel title="Verified structure search"><div className="flex flex-col gap-3"><input className={inputClass} value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Molecule name or formula" placeholder="water, benzene, ethanol" /><Button onClick={loadVerified} disabled={loading}>{loading ? "Loading structure…" : "Load PubChem 3D"}</Button>{error && <p className="text-sm text-destructive">{error}</p>}<p className="text-xs leading-5 text-muted-foreground">The viewer renders returned atom coordinates and connectivity. It does not invent fallback geometry.</p><div className="mt-2 flex flex-col gap-2">{MOLECULES.slice(0, 10).map((m) => <button key={m.formula} onClick={() => { setQuery(m.name); setSelected(m) }} className={`rounded-lg px-3 py-2 text-left text-sm ${selected.name === m.name ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}><span className="font-mono">{m.formula}</span><span className="ml-2 opacity-70">{m.name}</span></button>)}</div></div></Panel>
+      <div className="flex flex-col gap-6"><Panel title="3D structure"><div className="h-[480px] overflow-hidden rounded-xl bg-[#0b1017]"><Canvas camera={{ position: [0, 0, 8], fov: 45 }}><ambientLight intensity={1.4} /><directionalLight position={[4, 5, 6]} intensity={2} /><MoleculeModel3D molecule={selected} mode={mode} /><OrbitControls makeDefault enablePan enableZoom /></Canvas></div><div className="mt-4 flex flex-wrap gap-2">{(["ball-and-stick", "space-filling", "wireframe"] as MoleculeRenderMode[]).map((value) => <button key={value} onClick={() => setMode(value)} className={`rounded-md border px-3 py-2 text-xs capitalize ${mode === value ? "border-primary bg-primary/10 text-primary" : "border-border"}`}>{value.replaceAll("-", " ")}</button>)}</div></Panel><Panel title="Molecular information"><div className="grid gap-4 sm:grid-cols-3"><Metric label="Compound" value={selected.name} /><Metric label="Formula" value={selected.formula} /><Metric label="Atoms / bonds" value={`${selected.atoms.length} / ${selected.bonds.length}`} /></div><p className="mt-4 leading-7 text-muted-foreground">{selected.description}</p><p className="mt-3 font-mono text-xs text-muted-foreground">Source: {selected.source ?? "bundled reference data"}{selected.sourceId ? ` / CID ${selected.sourceId}` : ""}</p></Panel></div>
+    </div>
+  </ToolPage>
+}
 
 export function AssistantTool() { return <ToolPage eyebrow="Academia / guide" title="AI science assistant" description="Ask the configured server-side AI tutor about Physics, Chemistry, or Biology. Your current question context can be carried into the conversation without exposing provider credentials."><AiTutor /></ToolPage> }
 

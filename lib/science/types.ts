@@ -87,6 +87,8 @@ export interface MoleculeData {
   atoms: AtomPosition[]
   bonds: BondDef[]
   description: string
+  source?: string
+  sourceId?: string
 }
 
 export interface PhysicalConstant {
