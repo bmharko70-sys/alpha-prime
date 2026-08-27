@@ -30,15 +30,10 @@ export interface NavSection {
 export const CHEMISTRY_NAV: NavSection = {
   title: "Chemistry",
   items: [
-    { title: "Periodic Table", href: "/chemistry/periodic-table", icon: Grid3x3, description: "118 elements, searchable & filterable" },
-    { title: "Periodic Trends", href: "/chemistry/trends", icon: TrendingUp, description: "Electronegativity, radius, ionization energy" },
-    { title: "Molecular Viewer", href: "/chemistry/molecular-viewer", icon: Box, description: "3D compound models" },
-    { title: "Bonding & Lewis Structures", href: "/chemistry/bonding", icon: Share2, description: "Lewis diagrams, VSEPR geometry" },
-    { title: "Equation Balancer", href: "/chemistry/equation-balancer", icon: Scale, description: "Balance any reaction" },
-    { title: "Stoichiometry", href: "/chemistry/stoichiometry", icon: Calculator, description: "Mole ratios & limiting reagent" },
-    { title: "Concentration Lab", href: "/chemistry/concentration", icon: Droplets, description: "Molarity, dilution, molality" },
-    { title: "Acid-Base Lab", href: "/chemistry/acid-base", icon: TestTubes, description: "pH, titration curves" },
-    { title: "Simulations", href: "/chemistry/simulations", icon: Beaker, description: "12 interactive experiments" },
+    { title: "Interactive Periodic Table", href: "/chemistry/periodic-table", icon: Grid3x3, description: "Search all 118 elements and compare trends" },
+    { title: "Equation & Reaction Lab", href: "/chemistry/equation-lab", icon: Scale, description: "Parse, balance, classify, and verify reactions" },
+    { title: "Molecule & 3D Structure Lab", href: "/chemistry/molecule-lab", icon: Box, description: "Explore supported structures, bonds, and geometry" },
+    { title: "Calculator & Stoichiometry Lab", href: "/chemistry/calculator-lab", icon: Calculator, description: "Solve molar mass, concentration, and reaction quantities" },
   ],
 }
 
