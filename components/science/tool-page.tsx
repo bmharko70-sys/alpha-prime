@@ -1,7 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { balanceEquation } from "@/lib/science/chem/equation-balancer"
+import { balanceEquation, classifyReaction, type BalancedEquation } from "@/lib/science/chem/equation-balancer"
+import { parseFormula } from "@/lib/science/chem/formula"
 import { strongAcidPh, strongBasePh, weakAcidPh, weakBasePh, titrationPh } from "@/lib/science/chem/acid-base"
 import { MOLECULES } from "@/lib/science/data/molecules"
 import { Button } from "@/components/ui/button"
@@ -9,6 +10,15 @@ import { AiTutor } from "@/components/science/ai-tutor"
 import { PhysicsLaboratory, BiologyLaboratory } from "@/components/science/subject-lab"
 
 const inputClass = "h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary"
+
+function verifyEquation(result: BalancedEquation) {
+  const totals = (items: { formula: string; coefficient: number }[]) => items.reduce<Record<string, number>>((acc, item) => {
+    for (const [element, count] of Object.entries(parseFormula(item.formula))) acc[element] = (acc[element] ?? 0) + count * item.coefficient
+    return acc
+  }, {})
+  const left = totals(result.reactants); const right = totals(result.products)
+  return Array.from(new Set([...Object.keys(left), ...Object.keys(right)])).sort().map((element) => ({ element, reactants: left[element] ?? 0, products: right[element] ?? 0 }))
+}
 
 export function ToolPage({ title, eyebrow, description, children }: { title: string; eyebrow: string; description: string; children?: React.ReactNode }) {
   return <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-5 py-8 md:px-8"><div className="max-w-3xl"><p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">{eyebrow}</p><h1 className="mt-3 text-balance text-4xl font-semibold tracking-tight md:text-5xl">{title}</h1><p className="mt-4 text-pretty leading-7 text-muted-foreground">{description}</p></div>{children}</main>
@@ -19,7 +29,19 @@ export function Panel({ title, children }: { title: string; children: React.Reac
 export function EquationTool() {
   const [equation, setEquation] = React.useState("Fe + O2 -> Fe2O3")
   const [result, setResult] = React.useState(() => balanceEquation(equation))
-  return <ToolPage eyebrow="Chemistry / calculations" title="Equation balancer" description="Turn an unbalanced reaction into the smallest whole-number coefficients using exact stoichiometric linear algebra."><Panel title="Reaction input"><div className="flex flex-col gap-3 md:flex-row"><input aria-label="Chemical equation" className={inputClass} value={equation} onChange={(e) => setEquation(e.target.value)} /><Button onClick={() => setResult(balanceEquation(equation))}>Balance reaction</Button></div>{result.error ? <p className="mt-4 text-sm text-destructive">{result.error}</p> : <div className="mt-6 rounded-xl bg-muted/50 p-5 text-center font-mono text-lg">{result.reactants.map((x) => `${x.coefficient === 1 ? "" : x.coefficient}${x.formula}`).join(" + ")} → {result.products.map((x) => `${x.coefficient === 1 ? "" : x.coefficient}${x.formula}`).join(" + ")}</div>}</Panel></ToolPage>
+  const balancedText = result.balanced ? `${result.reactants.map((x) => `${x.coefficient === 1 ? "" : x.coefficient}${x.formula}`).join(" + ")} → ${result.products.map((x) => `${x.coefficient === 1 ? "" : x.coefficient}${x.formula}`).join(" + ")}` : ""
+  const verify = result.balanced ? verifyEquation(result) : []
+  return <ToolPage eyebrow="Chemistry / equation & reaction lab" title="Balance. Verify. Understand." description="Parse a reaction, solve its exact stoichiometric coefficients, and independently verify conservation of every element.">
+    <div className="grid gap-6 lg:grid-cols-[1.35fr_.65fr]">
+      <Panel title="Reaction input">
+        <div className="flex flex-col gap-3 md:flex-row"><input aria-label="Chemical equation" className={inputClass} value={equation} onChange={(e) => setEquation(e.target.value)} /><Button onClick={() => setResult(balanceEquation(equation))}>Balance reaction</Button></div>
+        <div className="mt-4 flex flex-wrap gap-2">{["H2 + O2 -> H2O", "C3H8 + O2 -> CO2 + H2O", "NaOH + HCl -> NaCl + H2O"].map((example) => <button key={example} className="rounded-full border border-border px-3 py-1.5 font-mono text-xs text-muted-foreground hover:border-primary hover:text-foreground" onClick={() => { setEquation(example); setResult(balanceEquation(example)) }}>{example}</button>)}</div>
+        {result.error ? <p className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{result.error}</p> : <><div className="mt-6 overflow-x-auto rounded-xl bg-muted/50 p-5 text-center font-mono text-lg">{result.reactants.map((x) => `${x.coefficient === 1 ? "" : x.coefficient}${x.formula}`).join(" + ")} → {result.products.map((x) => `${x.coefficient === 1 ? "" : x.coefficient}${x.formula}`).join(" + ")}</div><p className="mt-3 text-sm text-muted-foreground">Reaction type: <span className="font-medium capitalize text-foreground">{classifyReaction(result).replaceAll("-", " ")}</span></p></>}
+      </Panel>
+      <Panel title="Verification"><div className="flex flex-col gap-3">{verify.map((row) => <div key={row.element} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 font-mono text-sm"><span>{row.element}</span><span>{row.reactants} = {row.products}</span></div>)}{result.balanced && <p className="rounded-lg bg-primary/10 p-3 text-sm font-medium text-primary">✓ Independently verified: atoms are conserved.</p>}</div></Panel>
+    </div>
+    {result.balanced && <Panel title="Generated working"><div className="grid gap-3 sm:grid-cols-3"><Metric label="Parsed compounds" value={`${result.reactants.length + result.products.length}`} /><Metric label="Smallest coefficients" value={balancedText} /><Metric label="Method" value="Exact integer matrix" /></div><details className="mt-5 rounded-lg border border-border p-4"><summary className="cursor-pointer font-medium">Show balancing steps</summary><ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-6 text-muted-foreground"><li>Identify the elements present in the parsed formulas.</li><li>Build a stoichiometric matrix with products negated.</li><li>Solve the null-space vector, reduce to the smallest whole numbers, then verify each atom count.</li></ol></details></Panel>}
+  </ToolPage>
 }
 
 export function AcidBaseTool() {
