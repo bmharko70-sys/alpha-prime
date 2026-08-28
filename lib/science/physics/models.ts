@@ -1,243 +1,51 @@
-// ============================================================================
-// PHYSICS LABORATORY: CORE VALIDATION & UTILITIES
-// ============================================================================
+export const FIXED_DT = 1 / 120
 
-/** Clamp a value to [min, max], replacing NaN/Infinity with min. */
-export const clamp = (value: number, min: number, max: number) =>
-  Math.min(max, Math.max(min, Number.isFinite(value) ? value : min))
-
-/** Validate input: ensure finite positive value. */
-export const validatePositive = (value: number, fallback = 1): number => {
-  if (!Number.isFinite(value) || value <= 0) return fallback
-  return value
-}
-
-/** Format number for display with optional decimal places. */
-export const fmt = (n: number, digits = 2): string =>
-  Number.isFinite(n) ? n.toFixed(digits) : '—'
-
-// ============================================================================
-// PENDULUM PHYSICS
-// ============================================================================
-
-export interface PendulumState {
-  t: number
-  theta: number
-  omega: number
-  alpha: number
-  x: number
-  y: number
-  vx: number
-  vy: number
-  energy: number
-}
-
-export const pendulumStep = (
-  theta: number,
-  omega: number,
-  length: number,
-  g: number,
-  damping: number,
-  dt: number
-): { theta: number; omega: number; alpha: number } => {
-  const alpha = -(g / validatePositive(length)) * Math.sin(theta) - damping * omega
-  const nextOmega = omega + alpha * dt
-  const nextTheta = theta + nextOmega * dt
-  return { theta: nextTheta, omega: nextOmega, alpha }
-}
-
-export const pendulumEnergy = (
-  theta: number,
-  omega: number,
-  mass: number,
-  length: number,
-  g: number
-): number => {
-  const height = -length * Math.cos(theta)
-  const pe = mass * g * height
-  const ke = 0.5 * mass * (length * omega) ** 2
-  return pe + ke
-}
-
-// ============================================================================
-// SPRING & SHM PHYSICS
-// ============================================================================
-
-export interface SpringState {
-  t: number
-  x: number
-  v: number
-  a: number
-  ke: number
-  pe: number
-  energy: number
-}
-
-export const springStep = (
-  x: number,
-  v: number,
-  mass: number,
-  k: number,
-  damping: number,
-  dt: number
-): { x: number; v: number; a: number } => {
-  const m = validatePositive(mass)
-  const ks = validatePositive(k)
-  const a = (-ks * x - damping * v) / m
-  const nextV = v + a * dt
-  const nextX = x + nextV * dt
-  return { x: nextX, v: nextV, a }
-}
-
-export const springEnergy = (x: number, v: number, k: number, mass: number): number => {
-  const pe = 0.5 * validatePositive(k) * x * x
-  const ke = 0.5 * validatePositive(mass) * v * v
-  return pe + ke
-}
-
-// ============================================================================
-// COLLISION PHYSICS
-// ============================================================================
-
-export const collision = (
-  m1: number,
-  v1: number,
-  m2: number,
-  v2: number,
-  e: number
-): { v1f: number; v2f: number } => {
-  const m1v = validatePositive(m1)
-  const m2v = validatePositive(m2)
-  const denom = m1v + m2v
-  const relVel = v1 - v2
-  const impulse = ((1 + e) * m2v * relVel) / denom
-  return {
-    v1f: v1 - impulse / m1v,
-    v2f: v2 + impulse / m2v,
-  }
-}
-
-// ============================================================================
-// PROJECTILE MOTION PHYSICS
-// ============================================================================
-
-export interface ProjectileState {
-  t: number
-  x: number
-  y: number
-  vx: number
-  vy: number
-  ax: number
-  ay: number
-}
-
-export const projectileStep = (
-  x: number,
-  y: number,
-  vx: number,
-  vy: number,
-  g: number,
-  dt: number
-): ProjectileState => {
-  const ax = 0
-  const ay = -validatePositive(g)
-  const nextVx = vx + ax * dt
-  const nextVy = vy + ay * dt
-  const nextX = x + nextVx * dt
-  const nextY = Math.max(0, y + nextVy * dt)
-  return { t: 0, x: nextX, y: nextY, vx: nextVx, vy: nextVy, ax, ay }
-}
-
-export const projectileRange = (v0: number, angleDeg: number, g: number, h0: number = 0): number => {
-  const a = (angleDeg * Math.PI) / 180
-  const vx = v0 * Math.cos(a)
-  const vy = v0 * Math.sin(a)
-  const flight = (vy + Math.sqrt(Math.max(0, vy * vy + 2 * g * h0))) / validatePositive(g)
-  return vx * flight
-}
-
-export const projectileMaxHeight = (v0: number, angleDeg: number, g: number, h0: number = 0): number => {
-  const a = (angleDeg * Math.PI) / 180
-  const vy = v0 * Math.sin(a)
-  return h0 + (vy * vy) / (2 * validatePositive(g))
-}
-
-// ============================================================================
-// BUOYANCY & DENSITY PHYSICS
-// ============================================================================
-
-export const density = (mass: number, volume: number): number =>
-  validatePositive(mass) / validatePositive(volume)
-
-export const buoyancy = (
-  mass: number,
-  volume: number,
-  fluidDensity: number,
-  g: number = 9.81
-): {
-  objectDensity: number
-  buoyantForce: number
-  weight: number
-  netForce: number
-  floats: boolean
-} => {
-  const m = validatePositive(mass)
-  const v = validatePositive(volume)
-  const fd = validatePositive(fluidDensity)
-  const objDensity = density(m, v)
-  const weight = m * validatePositive(g)
-  const buoyantForce = fd * validatePositive(g) * v
-  return {
-    objectDensity: objDensity,
-    buoyantForce,
-    weight,
-    netForce: buoyantForce - weight,
-    floats: objDensity < fd,
-  }
-}
-
-// ============================================================================
-// DATA RECORDING & VISUALIZATION
-// ============================================================================
+export const finite = (value: number, fallback = 0) => Number.isFinite(value) ? value : fallback
+export const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, finite(value, min)))
+export const positive = (value: number, fallback = 1) => Math.max(Number.EPSILON, finite(value, fallback))
+export const fmt = (value: number, digits = 2) => Number.isFinite(value) ? value.toFixed(digits) : "—"
 
 export type Sample = { t: number; [key: string]: number }
 
-export const seriesPath = (samples: Sample[], key: string, width = 560, height = 150): string => {
-  if (!samples.length) return ''
-  const values = samples.map((s) => Number(s[key] ?? 0))
-  const min = Math.min(...values)
-  const max = Math.max(...values)
-  const range = Math.max(max - min, 1e-9)
-  return samples
-    .map((s, i) => {
-      const x = (i / Math.max(samples.length - 1, 1)) * width
-      const y = height - (((Number(s[key] ?? 0) - min) / range) * (height - 12) + 6)
-      return `${i ? 'L' : 'M'} ${x.toFixed(1)} ${y.toFixed(1)}`
-    })
-    .join(' ')
+export interface PendulumState { t:number; theta:number; omega:number; alpha:number; x:number; y:number; vx:number; vy:number; energy:number }
+export const pendulumStep = (theta:number, omega:number, length:number, g:number, damping:number, dt=FIXED_DT) => {
+  const alpha = -(positive(g) / positive(length)) * Math.sin(theta) - Math.max(0, finite(damping)) * omega
+  const nextOmega = omega + alpha * dt
+  return { theta: theta + nextOmega * dt, omega: nextOmega, alpha }
+}
+export const pendulumEnergy = (theta:number, omega:number, mass:number, length:number, g:number) => {
+  const m=positive(mass), l=positive(length), gravity=positive(g)
+  return m * gravity * l * (1 - Math.cos(theta)) + 0.5 * m * (l * omega) ** 2
 }
 
-// ============================================================================
-// LABORATORY CONFIGURATION
-// ============================================================================
+export interface SpringState { t:number; x:number; v:number; a:number; ke:number; pe:number; energy:number }
+export const springStep = (x:number, v:number, mass:number, k:number, damping:number, dt=FIXED_DT) => {
+  const a = (-positive(k) * finite(x) - Math.max(0, finite(damping)) * finite(v)) / positive(mass)
+  const nextV = finite(v) + a * dt
+  return { x: finite(x) + nextV * dt, v: nextV, a }
+}
+export const springEnergy = (x:number, v:number, k:number, mass:number) => 0.5 * positive(k) * finite(x) ** 2 + 0.5 * positive(mass) * finite(v) ** 2
 
-export const physicsConstants = { g: 9.81, waterDensity: 1000 }
+export const collision = (m1:number,v1:number,m2:number,v2:number,e:number) => {
+  const a=positive(m1), b=positive(m2), restitution=clamp(e,0,1), impulse=((1+restitution)*b*(finite(v1)-finite(v2)))/(a+b)
+  return { v1f: finite(v1)-impulse/a, v2f: finite(v2)+impulse/b }
+}
 
-export type LabId = 'pendulum' | 'spring' | 'collision' | 'buoyancy' | 'projectile'
+export interface ProjectileState { t:number; x:number; y:number; vx:number; vy:number; ax:number; ay:number }
+export const projectileStep = (state:ProjectileState, g:number, dt=FIXED_DT, air=0):ProjectileState => {
+  const drag=Math.max(0, finite(air)), ax=-drag*state.vx, ay=-positive(g)-drag*state.vy
+  const vx=state.vx+ax*dt, vy=state.vy+ay*dt
+  return { t:state.t+dt, x:state.x+vx*dt, y:Math.max(0,state.y+vy*dt), vx,vy,ax,ay }
+}
+export const projectileRange=(v0:number,angleDeg:number,g:number,h0=0)=>{const a=angleDeg*Math.PI/180,vy=finite(v0)*Math.sin(a),vx=finite(v0)*Math.cos(a),flight=(vy+Math.sqrt(Math.max(0,vy*vy+2*positive(g)*Math.max(0,h0))))/positive(g);return vx*flight}
+export const projectileMaxHeight=(v0:number,angleDeg:number,g:number,h0=0)=>Math.max(0,h0)+(finite(v0)*Math.sin(angleDeg*Math.PI/180))**2/(2*positive(g))
 
-export const labs: Array<{ id: LabId; name: string; subtitle: string; symbol: string }> = [
-  { id: 'pendulum', name: 'Pendulum', subtitle: 'Nonlinear motion', symbol: '◌' },
-  { id: 'spring', name: 'Spring & SHM', subtitle: 'Oscillation and energy', symbol: '∿' },
-  { id: 'collision', name: 'Collision', subtitle: 'Momentum and impulse', symbol: '↔' },
-  { id: 'buoyancy', name: 'Buoyancy', subtitle: 'Archimedes principle', symbol: '↑' },
-  { id: 'projectile', name: 'Projectile', subtitle: 'Angled trajectory motion', symbol: '→' },
-]
+export const density=(mass:number,volume:number)=>positive(mass)/positive(volume)
+export const buoyancy=(mass:number,volume:number,fluidDensity:number,g=9.81)=>{const m=positive(mass),v=positive(volume),fd=positive(fluidDensity),gravity=positive(g),objectDensity=density(m,v),weight=m*gravity,buoyantForce=fd*gravity*v;return {objectDensity,buoyantForce,weight,netForce:buoyantForce-weight,floats:objectDensity<fd}}
+export const seriesPath=(samples:Sample[],key:string,width=560,height=150)=>{if(!samples.length)return "";const values=samples.map(s=>finite(s[key])),min=Math.min(...values),max=Math.max(...values),range=Math.max(max-min,1e-9);return samples.map((s,i)=>`${i?"L":"M"} ${(i/Math.max(samples.length-1,1)*width).toFixed(1)} ${(height-(((finite(s[key])-min)/range)*(height-12)+6)).toFixed(1)}`).join(" ")}
 
-export const materials: Array<{ name: string; density: number }> = [
-  { name: 'Cork', density: 240 },
-  { name: 'Oak Wood', density: 700 },
-  { name: 'Aluminum', density: 2700 },
-  { name: 'Iron', density: 7874 },
-  { name: 'Copper', density: 8960 },
-  { name: 'Lead', density: 11340 },
-]
+export const physicsConstants={g:9.81,waterDensity:1000}
+export type LabId="pendulum"|"spring"|"collision"|"buoyancy"|"projectile"
+export const labs:Array<{id:LabId;name:string;subtitle:string;symbol:string}>=[
+ {id:"pendulum",name:"Pendulum",subtitle:"Nonlinear motion",symbol:"◌"},{id:"spring",name:"Spring & SHM",subtitle:"Oscillation and energy",symbol:"∿"},{id:"collision",name:"Collision",subtitle:"Momentum and impulse",symbol:"↔"},{id:"buoyancy",name:"Buoyancy",subtitle:"Archimedes principle",symbol:"↑"},{id:"projectile",name:"Projectile",subtitle:"Angled trajectory motion",symbol:"→"},]
+export const materials=[{name:"Cork",density:240},{name:"Oak Wood",density:700},{name:"Aluminum",density:2700},{name:"Iron",density:7874},{name:"Copper",density:8960},{name:"Lead",density:11340}]

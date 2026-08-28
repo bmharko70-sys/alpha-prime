@@ -6,7 +6,7 @@ import { OrbitControls, Line, Text, Environment } from "@react-three/drei"
 import * as THREE from "three"
 import { Button } from "@/components/ui/button"
 import { Panel } from "@/components/science/tool-page"
-import { buoyancy, collision, density, fmt, labs, materials, physicsConstants, type LabId } from "@/lib/science/physics/models"
+import { FIXED_DT, buoyancy, collision, density, fmt, labs, materials, physicsConstants, pendulumStep, springStep, pendulumEnergy, springEnergy, type LabId } from "@/lib/science/physics/models"
 
 const inputClass = "h-9 w-full rounded-md border border-border bg-background px-2 text-sm"
 function Field({ label, value, onChange, min = 0, step = 0.1 }: { label: string; value: number; onChange: (value: number) => void; min?: number; step?: number }) { return <label className="flex flex-col gap-1 text-xs text-muted-foreground">{label}<input className={inputClass} type="number" min={min} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} /></label> }
@@ -15,51 +15,24 @@ function Readout({ label, value, unit = "" }: { label: string; value: string; un
 function SpringMesh({ length }: { length: number }) { const points = React.useMemo(() => { const p: THREE.Vector3[] = []; for (let i = 0; i <= 40; i++) { const x = i / 40 * length; p.push(new THREE.Vector3(x, Math.sin(i / 40 * Math.PI * 12) * 0.12, 0)) } return p }, [length]); return <Line points={points} color="#fbbf24" lineWidth={3} /> }
 
 function World({ id, running, speed, params, onState }: { id: LabId; running: boolean; speed: number; params: Record<string, number>; onState: (state: Record<string, number>) => void }) {
-  const state = React.useRef({ t: 0, theta: params.angle, omega: 0, x: 0.6, v: 0, x1: -3, x2: 3, v1: params.v1, v2: params.v2, px: -3, py: 0.4, pvx: params.v0, pvy: params.vy0, y: 1.3, vy: 0 })
+  const state = React.useRef({ t: 0, theta: params.angle, omega: 0, x: 0.6, v: 0, x1: -3, x2: 3, v1: params.v1, v2: params.v2, px: -3, py: 0.4, pvx: params.v0 * Math.cos(params.launchAngle), pvy: params.v0 * Math.sin(params.launchAngle), y: 1.3, vy: 0 })
+  const paramsRef = React.useRef(params)
+  paramsRef.current = params
+  const accumulator = React.useRef(0)
+  React.useEffect(() => { state.current = { t: 0, theta: params.angle, omega: 0, x: 0.6, v: 0, x1: -3, x2: 3, v1: params.v1, v2: params.v2, px: -3, py: 0.4, pvx: params.v0 * Math.cos(params.launchAngle), pvy: params.v0 * Math.sin(params.launchAngle), y: 1.3, vy: 0 }; accumulator.current = 0 }, [id])
   useFrame((_, delta) => {
     if (!running) return
-    let remaining = Math.min(delta * speed, 0.08)
-    const dt = 1 / 120
-    while (remaining > 0) {
-      const h = Math.min(dt, remaining)
-      remaining -= h
+    const p = paramsRef.current
+    accumulator.current = Math.min(accumulator.current + delta * speed, 0.25)
+    while (accumulator.current >= FIXED_DT) {
+      accumulator.current -= FIXED_DT
       const s = state.current
-      s.t += h
-      if (id === "pendulum") {
-        const alpha = -(params.g / params.length) * Math.sin(s.theta) - params.damping * s.omega
-        s.omega += alpha * h
-        s.theta += s.omega * h
-        onState({ t: s.t, theta: s.theta, omega: s.omega, alpha, x: params.length * Math.sin(s.theta), y: -params.length * Math.cos(s.theta) })
-      } else if (id === "spring") {
-        const acceleration = (-params.k * s.x - params.damping * s.v) / params.mass
-        s.v += acceleration * h
-        s.x += s.v * h
-        onState({ t: s.t, x: s.x, v: s.v, a: acceleration, energy: 0.5 * params.k * s.x * s.x + 0.5 * params.mass * s.v * s.v })
-      } else if (id === "collision") {
-        s.x1 += s.v1 * h
-        s.x2 += s.v2 * h
-        if (s.x2 - s.x1 <= 1.1) {
-          const next = collision(params.m1, s.v1, params.m2, s.v2, params.e)
-          s.v1 = next.v1f
-          s.v2 = next.v2f
-          s.x1 = s.x2 - 1.1
-        }
-        onState({ t: s.t, x1: s.x1, x2: s.x2, v1: s.v1, v2: s.v2 })
-      } else if (id === "projectile") {
-        s.pvx = params.v0 * Math.cos(params.launchAngle)
-        s.pvy += -params.g * h
-        s.px += s.pvx * h
-        s.py += s.pvy * h
-        if (s.py <= 0) { s.py = 0; s.pvy = Math.abs(s.pvy) * 0.35; s.pvx *= 0.82 }
-        onState({ t: s.t, x: s.px, y: s.py, vx: s.pvx, vy: s.pvy, range: s.px + 3 })
-      } else if (id === "buoyancy") {
-        const forces = buoyancy(params.mass, params.volume, params.fluid, params.g)
-        const acceleration = (forces.buoyantForce - forces.weight) / params.mass
-        s.vy += acceleration * h
-        s.y = Math.max(-1.2, Math.min(1.8, s.y + s.vy * h))
-        if (s.y <= -1.2 || s.y >= 1.8) s.vy *= -0.15
-        onState({ t: s.t, y: s.y, vy: s.vy, force: forces.buoyantForce - forces.weight })
-      }
+      s.t += FIXED_DT
+      if (id === "pendulum") { const n = pendulumStep(s.theta, s.omega, p.length, p.g, p.damping, FIXED_DT); s.theta=n.theta; s.omega=n.omega; onState({t:s.t,theta:s.theta,omega:s.omega,alpha:n.alpha,x:p.length*Math.sin(s.theta),y:-p.length*Math.cos(s.theta),energy:pendulumEnergy(s.theta,s.omega,p.mass,p.length,p.g)})
+      } else if (id === "spring") { const n=springStep(s.x,s.v,p.mass,p.k,p.damping,FIXED_DT); s.x=n.x;s.v=n.v; onState({t:s.t,x:s.x,v:s.v,a:n.a,energy:springEnergy(s.x,s.v,p.k,p.mass)})
+      } else if (id === "collision") { s.x1+=s.v1*FIXED_DT;s.x2+=s.v2*FIXED_DT;if(s.x2-s.x1<=1.1 && s.v1>s.v2){const n=collision(p.m1,s.v1,p.m2,s.v2,p.e);s.v1=n.v1f;s.v2=n.v2f;s.x1=s.x2-1.1}onState({t:s.t,x1:s.x1,x2:s.x2,v1:s.v1,v2:s.v2})
+      } else if (id === "projectile") { s.pvy += -p.g*FIXED_DT;s.px+=s.pvx*FIXED_DT;s.py+=s.pvy*FIXED_DT;if(s.py<=0){s.py=0;s.pvy=Math.abs(s.pvy)*0.35;s.pvx*=0.82}onState({t:s.t,x:s.px,y:s.py,vx:s.pvx,vy:s.pvy,range:s.px+3})
+      } else { const f=buoyancy(p.mass,p.volume,p.fluid,p.g),a=f.netForce/p.mass;s.vy+=a*FIXED_DT;s.y=Math.max(-1.2,Math.min(1.8,s.y+s.vy*FIXED_DT));if(s.y<=-1.2||s.y>=1.8)s.vy*=-0.15;onState({t:s.t,y:s.y,vy:s.vy,force:f.netForce}) }
     }
   })
   const s = state.current
