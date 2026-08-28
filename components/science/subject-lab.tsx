@@ -1,32 +1,104 @@
 "use client"
+
 import * as React from "react"
+import { Canvas, useFrame } from "@react-three/fiber"
+import { OrbitControls, Line, Text, Environment } from "@react-three/drei"
+import * as THREE from "three"
 import { Button } from "@/components/ui/button"
 import { Panel } from "@/components/science/tool-page"
-import { buoyancy, collision, density, fmt, labs, materials, pendulumStep, physicsConstants, projectile, sample, seriesPath, springStep, type LabId } from "@/lib/science/physics/models"
+import { buoyancy, collision, density, fmt, labs, materials, physicsConstants, type LabId } from "@/lib/science/physics/models"
 
-const field = "h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary"
-function NumberField({ label, value, onChange, min = 0, step = "any" }: { label: string; value: number; onChange: (v: number) => void; min?: number; step?: string }) { return <label className="grid gap-1.5 text-xs text-muted-foreground">{label}<input className={field} type="number" min={min} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} /></label> }
-function Readout({ label, value, unit = "" }: { label: string; value: string; unit?: string }) { return <div className="rounded-lg border border-border bg-muted/40 p-3"><p className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</p><p className="mt-1 font-mono text-lg">{value} <span className="text-xs text-muted-foreground">{unit}</span></p></div> }
-function Plot({ path, color = "#67e8f9", label }: { path: string; color?: string; label: string }) { return <div className="rounded-xl border border-border bg-background/60 p-3"><div className="mb-2 flex justify-between font-mono text-[10px] uppercase tracking-widest text-muted-foreground"><span>{label}</span><span>recorded samples</span></div><svg viewBox="0 0 560 150" className="h-32 w-full" role="img" aria-label={`${label} plot`}><path d="M 0 144 H 560" stroke="currentColor" className="text-border" /><path d={path} fill="none" stroke={color} strokeWidth="3" /></svg></div> }
+const inputClass = "h-9 w-full rounded-md border border-border bg-background px-2 text-sm"
+function Field({ label, value, onChange, min = 0, step = 0.1 }: { label: string; value: number; onChange: (value: number) => void; min?: number; step?: number }) { return <label className="flex flex-col gap-1 text-xs text-muted-foreground">{label}<input className={inputClass} type="number" min={min} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} /></label> }
+function Readout({ label, value, unit = "" }: { label: string; value: string; unit?: string }) { return <div className="rounded-md border border-border bg-muted/30 p-2"><p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{label}</p><p className="font-mono text-sm">{value} <span className="text-[10px] text-muted-foreground">{unit}</span></p></div> }
+
+function SpringMesh({ length }: { length: number }) { const points = React.useMemo(() => { const p: THREE.Vector3[] = []; for (let i = 0; i <= 40; i++) { const x = i / 40 * length; p.push(new THREE.Vector3(x, Math.sin(i / 40 * Math.PI * 12) * 0.12, 0)) } return p }, [length]); return <Line points={points} color="#fbbf24" lineWidth={3} /> }
+
+function World({ id, running, speed, params, onState }: { id: LabId; running: boolean; speed: number; params: Record<string, number>; onState: (state: Record<string, number>) => void }) {
+  const state = React.useRef({ t: 0, theta: params.angle, omega: 0, x: 0.6, v: 0, x1: -3, x2: 3, v1: params.v1, v2: params.v2, y: 1.3, vy: 0 })
+  useFrame((_, delta) => {
+    if (!running) return
+    let remaining = Math.min(delta * speed, 0.08)
+    const dt = 1 / 120
+    while (remaining > 0) {
+      const h = Math.min(dt, remaining)
+      remaining -= h
+      const s = state.current
+      s.t += h
+      if (id === "pendulum") {
+        const alpha = -(params.g / params.length) * Math.sin(s.theta) - params.damping * s.omega
+        s.omega += alpha * h
+        s.theta += s.omega * h
+        onState({ t: s.t, theta: s.theta, omega: s.omega, alpha, x: params.length * Math.sin(s.theta), y: -params.length * Math.cos(s.theta) })
+      } else if (id === "spring") {
+        const acceleration = (-params.k * s.x - params.damping * s.v) / params.mass
+        s.v += acceleration * h
+        s.x += s.v * h
+        onState({ t: s.t, x: s.x, v: s.v, a: acceleration, energy: 0.5 * params.k * s.x * s.x + 0.5 * params.mass * s.v * s.v })
+      } else if (id === "collision") {
+        s.x1 += s.v1 * h
+        s.x2 += s.v2 * h
+        if (s.x2 - s.x1 <= 1.1) {
+          const next = collision(params.m1, s.v1, params.m2, s.v2, params.e)
+          s.v1 = next.v1f
+          s.v2 = next.v2f
+          s.x1 = s.x2 - 1.1
+        }
+        onState({ t: s.t, x1: s.x1, x2: s.x2, v1: s.v1, v2: s.v2 })
+      } else if (id === "buoyancy") {
+        const forces = buoyancy(params.mass, params.volume, params.fluid, params.g)
+        const acceleration = (forces.buoyantForce - forces.weight) / params.mass
+        s.vy += acceleration * h
+        s.y = Math.max(-1.2, Math.min(1.8, s.y + s.vy * h))
+        if (s.y <= -1.2 || s.y >= 1.8) s.vy *= -0.15
+        onState({ t: s.t, y: s.y, vy: s.vy, force: forces.buoyantForce - forces.weight })
+      }
+    }
+  })
+  const s = state.current
+  if (id === "pendulum") { const x = params.length * Math.sin(s.theta), y = 2 - params.length * Math.cos(s.theta); return <><mesh position={[0, 2, 0]}><boxGeometry args={[2.4, .16, .5]} /><meshStandardMaterial color="#334155" /></mesh><mesh position={[0, 1, 0]}><boxGeometry args={[.12, 2, .12]} /><meshStandardMaterial color="#64748b" /></mesh><Line points={[[0, 2, 0], [x, y, 0]]} color="#e2e8f0" lineWidth={2} /><mesh position={[x, y, 0]}><sphereGeometry args={[.25, 24, 16]} /><meshStandardMaterial color="#22d3ee" metalness={.35} roughness={.25} /></mesh><Text position={[0, 2.35, 0]} fontSize={.16} color="#bae6fd">PENDULUM / θ = {fmt(s.theta * 180 / Math.PI, 1)}°</Text></> }
+  if (id === "spring") return <><mesh position={[-2.3, 0, 0]}><boxGeometry args={[.25, 2.2, .8]} /><meshStandardMaterial color="#475569" /></mesh><SpringMesh length={2.4 + s.x * 1.7} /><mesh position={[.1 + s.x * 1.7, 0, 0]}><boxGeometry args={[.55, .55, .55]} /><meshStandardMaterial color="#fbbf24" metalness={.4} /></mesh><Text position={[0, .8, 0]} fontSize={.16} color="#fde68a">SPRING / x = {fmt(s.x)} m</Text></>
+  if (id === "collision") return <><mesh position={[0, -.6, 0]}><boxGeometry args={[8, .12, 1]} /><meshStandardMaterial color="#334155" /></mesh><mesh position={[s.x1, 0, 0]}><sphereGeometry args={[.55, 24, 16]} /><meshStandardMaterial color="#22d3ee" /></mesh><mesh position={[s.x2, 0, 0]}><sphereGeometry args={[.55, 24, 16]} /><meshStandardMaterial color="#fb7185" /></mesh><Text position={[0, .9, 0]} fontSize={.16} color="#cbd5e1">COLLISION / v₁ {fmt(s.v1)} · v₂ {fmt(s.v2)}</Text></>
+  if (id === "buoyancy") return <><mesh position={[0, -.25, 0]}><boxGeometry args={[5, 3, 2]} /><meshStandardMaterial color="#0e7490" transparent opacity={.18} /></mesh><mesh position={[0, 1.25, 0]}><boxGeometry args={[5, .04, 2]} /><meshStandardMaterial color="#67e8f9" transparent opacity={.65} /></mesh><mesh position={[0, s.y, 0]}><boxGeometry args={[.8, .8, .8]} /><meshStandardMaterial color="#fbbf24" /></mesh><Text position={[0, 2, 0]} fontSize={.16} color="#a5f3fc">BUOYANCY / Fnet {fmt((onState && 0) || 0)} N</Text></>
+  const scale = Math.max(.4, params.volume ** (1 / 3)); return <><mesh position={[0, 0, 0]} scale={scale}><sphereGeometry args={[.8, 24, 16]} /><meshStandardMaterial color="#22d3ee" metalness={.25} /></mesh><mesh position={[0, -.9, 0]}><boxGeometry args={[3, .08, 1.5]} /><meshStandardMaterial color="#475569" /></mesh><Text position={[0, 1.2, 0]} fontSize={.16} color="#bae6fd">DENSITY / ρ = {fmt(density(params.mass, params.volume), 0)} kg·m⁻³</Text></>
+}
 
 export function PhysicsLaboratory() {
-  const [active, setActive] = React.useState<LabId>("density")
-  const [running, setRunning] = React.useState(false)
-  const [time, setTime] = React.useState(0)
-  React.useEffect(() => { if (!running) return; const id = window.setInterval(() => setTime((t) => t + 0.05), 50); return () => window.clearInterval(id) }, [running])
-  return <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-5 py-8 md:px-8"><header><p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Academia / mechanics</p><h1 className="mt-3 text-balance text-4xl font-semibold tracking-tight md:text-5xl">Physics laboratory</h1><p className="mt-4 max-w-3xl text-pretty leading-7 text-muted-foreground">Five instrumented experiments for seeing the equations move. Tune a system, run it forward, and compare the model with its measured trace.</p></header><nav className="grid grid-cols-2 gap-2 md:grid-cols-5" aria-label="Physics experiments">{labs.map((lab) => <button key={lab.id} onClick={() => { setActive(lab.id); setTime(0); setRunning(false) }} className={`flex min-h-20 flex-col items-start justify-between rounded-xl border p-3 text-left transition ${active === lab.id ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/50"}`}><span className="font-mono text-xl text-primary">{lab.symbol}</span><span><span className="block text-sm font-medium">{lab.name}</span><span className="hidden text-[11px] text-muted-foreground sm:block">{lab.subtitle}</span></span></button>)}</nav><LabView id={active} time={time} running={running} setRunning={setRunning} setTime={setTime} /></main>
+  const [active, setActive] = React.useState<LabId>("pendulum"), [running, setRunning] = React.useState(false), [speed, setSpeed] = React.useState(1), [state, setState] = React.useState<Record<string, number>>({})
+  const [params, setParams] = React.useState<Record<string, number>>({ mass: 2, volume: 1, fluid: 1000, g: 9.81, length: 1, angle: .55, damping: .08, k: 18, m1: 1, m2: 2, v1: 2, v2: -1, e: 1 })
+  const patch = (key: string, value: number) => setParams((p) => ({ ...p, [key]: value }))
+  const reset = () => { setRunning(false); setState({}); setParams((p) => ({ ...p })) }
+  const lab = labs.find((x) => x.id === active)!
+  return <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-5 py-8 md:px-8"><header><p className="font-mono text-xs uppercase tracking-[.18em] text-primary">Academia / mechanics</p><h1 className="mt-3 text-4xl font-semibold tracking-tight md:text-5xl">Physics laboratory</h1><p className="mt-3 max-w-3xl leading-7 text-muted-foreground">Actual 3D objects, fixed-timestep dynamics, and live measurements. The renderer reads the same state as the equations.</p></header><nav className="grid grid-cols-2 gap-2 md:grid-cols-5" aria-label="Experiments">{labs.map((x) => <button key={x.id} onClick={() => { setActive(x.id); setRunning(false); setState({}) }} className={`min-h-16 rounded-lg border p-3 text-left ${active === x.id ? "border-primary bg-primary/10" : "border-border bg-card"}`}><span className="font-mono text-lg text-primary">{x.symbol}</span><span className="ml-2 text-sm font-medium">{x.name}</span></button>)}</nav><div className="grid gap-5 lg:grid-cols-[1fr_300px]"><Panel title={lab.name}><div className="h-[420px] overflow-hidden rounded-lg border border-border bg-[#071018]"><Canvas camera={{ position: [0, 1, 6], fov: 42 }} shadows><color attach="background" args={["#071018"]} /><ambientLight intensity={1.2} /><directionalLight position={[3, 5, 4]} intensity={2} castShadow /><Environment preset="studio" /><World id={active} running={running} speed={speed} params={params} onState={setState} /><OrbitControls makeDefault /></Canvas></div><div className="mt-3 flex flex-wrap items-center gap-2"><Button onClick={() => setRunning(!running)}>{running ? "Pause" : "Play"}</Button><Button variant="outline" onClick={reset}>Reset</Button><Button variant="outline" onClick={() => setState((s) => ({ ...s, step: (s.step ?? 0) + 1 }))}>Step</Button><span className="ml-auto font-mono text-xs text-muted-foreground">fixed Δt = 1/120 s</span></div></Panel><aside className="flex flex-col gap-4"><Panel title="Physical parameters"><div className="grid gap-3">{active === "pendulum" && <><Field label="Length (m)" value={params.length} onChange={(v) => patch("length", v)} min={.3} /><Field label="Initial angle (rad)" value={params.angle} onChange={(v) => patch("angle", v)} min={-.99} /><Field label="Gravity (m/s²)" value={params.g} onChange={(v) => patch("g", v)} min={0} /><Field label="Damping" value={params.damping} onChange={(v) => patch("damping", v)} min={0} /></>}{active === "spring" && <><Field label="Mass (kg)" value={params.mass} onChange={(v) => patch("mass", v)} min={.1} /><Field label="Stiffness (N/m)" value={params.k} onChange={(v) => patch("k", v)} min={.1} /></>}{active === "collision" && <><Field label="Mass A (kg)" value={params.m1} onChange={(v) => patch("m1", v)} min={.1} /><Field label="Mass B (kg)" value={params.m2} onChange={(v) => patch("m2", v)} min={.1} /><Field label="Velocity A (m/s)" value={params.v1} onChange={(v) => patch("v1", v)} step={.5} /><Field label="Velocity B (m/s)" value={params.v2} onChange={(v) => patch("v2", v)} step={.5} /><Field label="Restitution" value={params.e} onChange={(v) => patch("e", v)} min={0} /></>}{(active === "density" || active === "buoyancy") && <><Field label="Mass (kg)" value={params.mass} onChange={(v) => patch("mass", v)} min={.1} /><Field label="Volume (m³)" value={params.volume} onChange={(v) => patch("volume", v)} min={.05} step={.05} />{active === "buoyancy" && <Field label="Fluid density (kg/m³)" value={params.fluid} onChange={(v) => patch("fluid", v)} min={1} step={50} />}</>}</div></Panel><Panel title="Live state"><div className="grid grid-cols-2 gap-2"><Readout label="Time" value={fmt(state.t ?? 0, 2)} unit="s" />{active === "pendulum" && <><Readout label="Angle" value={fmt((state.theta ?? params.angle) * 180 / Math.PI, 1)} unit="°" /><Readout label="Angular velocity" value={fmt(state.omega ?? 0)} unit="rad/s" /><Readout label="Position x" value={fmt(state.x ?? 0)} unit="m" /></>}{active === "spring" && <><Readout label="Displacement" value={fmt(state.x ?? 0)} unit="m" /><Readout label="Velocity" value={fmt(state.v ?? 0)} unit="m/s" /><Readout label="Energy" value={fmt(state.energy ?? 0)} unit="J" /></>}{active === "collision" && <><Readout label="Velocity A" value={fmt(state.v1 ?? params.v1)} unit="m/s" /><Readout label="Velocity B" value={fmt(state.v2 ?? params.v2)} unit="m/s" /></>}{active === "buoyancy" && <><Readout label="Height" value={fmt(state.y ?? 1.3)} unit="m" /><Readout label="Net force" value={fmt(state.force ?? 0)} unit="N" /></>}{active === "density" && <Readout label="Density" value={fmt(density(params.mass, params.volume), 0)} unit="kg/m³" />}</div></Panel><Panel title="Model"><p className="font-mono text-xs leading-6 text-muted-foreground">{active === "pendulum" ? "θ̈ = −(g/L) sin(θ)" : active === "spring" ? "ẍ = −(kx + cv) / m" : active === "collision" ? "p before = p after" : active === "buoyancy" ? "Fnet = ρfluid g Vsub − mg" : "ρ = m / V"}</p></Panel></aside></div></main>
 }
 
-function LabView({ id, time, running, setRunning, setTime }: { id: LabId; time: number; running: boolean; setRunning: (v: boolean) => void; setTime: (v: number) => void }) {
-  const [mass, setMass] = React.useState(2), [volume, setVolume] = React.useState(1), [material, setMaterial] = React.useState(materials[0].name)
-  const [m1, setM1] = React.useState(1), [v1, setV1] = React.useState(4), [m2, setM2] = React.useState(2), [v2, setV2] = React.useState(-1), [e, setE] = React.useState(1)
-  const [fluid, setFluid] = React.useState(1000), [k, setK] = React.useState(18), [damping, setDamping] = React.useState(.35), [length, setLength] = React.useState(1)
-  const model = id === "density" ? density(mass, volume) : id === "collision" ? collision(m1, v1, m2, v2, e) : id === "buoyancy" ? buoyancy(mass, volume, fluid) : null
-  const spring = id === "spring" ? springStep(.55 * Math.cos(time * Math.sqrt(k / 1.2)), -.55 * Math.sqrt(k / 1.2) * Math.sin(time * Math.sqrt(k / 1.2)), 1.2, k, damping, .05) : null
-  const pend = id === "pendulum" ? pendulumStep(.7 * Math.cos(time * Math.sqrt(physicsConstants.g / length)), 0, length, physicsConstants.g, .05) : null
-  const path = id === "spring" ? seriesPath(sample((t, prev) => springStep(prev.x || .55, prev.v, 1.2, k, damping, .05), 7), "x") : id === "pendulum" ? seriesPath(sample((t, prev) => pendulumStep(prev.x || .7, prev.v, length, 9.81, .05) && ({ t, x: pendulumStep(prev.x || .7, prev.v, length, 9.81, .05).theta, v: 0 }), 7), "x") : ""
-  const reset = () => { setRunning(false); setTime(0) }
-  return <div className="grid gap-6 lg:grid-cols-[1fr_320px]"><div className="flex flex-col gap-4"><Panel title={labs.find((x) => x.id === id)?.name ?? "Experiment"}><div className="relative flex min-h-[300px] items-center justify-center overflow-hidden rounded-xl border border-border bg-[#081018] p-6"><div className="absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(125,211,252,.12)_1px,transparent_1px),linear-gradient(90deg,rgba(125,211,252,.12)_1px,transparent_1px)] [background-size:32px_32px]" />{id === "density" && <div className="relative flex items-end gap-8"><div className="flex size-28 items-center justify-center rounded-lg border-2 border-primary bg-primary/20 font-mono text-primary">{fmt(mass)} kg</div><div className="h-40 w-28 rounded-b-[35%] border-2 border-cyan-200/70 bg-cyan-200/10" style={{ height: `${Math.max(60, volume * 60)}px` }}><span className="flex h-full items-center justify-center font-mono text-xs text-cyan-100">{fmt(volume)} m³</span></div></div>}{id === "collision" && <div className="flex w-full items-center justify-center gap-5"><div className="flex size-20 items-center justify-center rounded-full bg-primary/30 font-mono text-primary" style={{ transform: `translateX(${time % 2 * 45}px)` }}>A</div><div className="h-px flex-1 border-t border-dashed border-muted-foreground" /><div className="flex size-24 items-center justify-center rounded-full bg-accent/30 font-mono text-accent" style={{ transform: `translateX(-${time % 2 * 25}px)` }}>B</div></div>}{id === "buoyancy" && <div className="relative h-52 w-72 overflow-hidden rounded-xl border border-cyan-200/30 bg-cyan-300/10"><div className="absolute inset-x-0 top-1/2 border-t border-cyan-200/40" /><div className="absolute left-1/2 top-[35%] size-20 -translate-x-1/2 rounded-lg border-2 border-accent bg-accent/30" style={{ top: `${25 + (model as ReturnType<typeof buoyancy>).submerged * 28}%` }} /></div>}{id === "spring" && <div className="flex items-center gap-0"><div className="h-20 w-20 rounded-lg border-2 border-primary bg-primary/20" /><div className="w-56 border-y-4 border-dashed border-muted-foreground" style={{ transform: `scaleX(${1 + (spring?.x ?? 0) / 2})` }} /><div className="h-32 w-6 border-2 border-border bg-muted" /></div>}{id === "pendulum" && <div className="relative h-60 w-72"><div className="absolute left-1/2 top-5 h-44 w-px origin-top bg-muted-foreground" style={{ transform: `rotate(${(pend?.theta ?? .7) * 45}deg)` }} /><div className="absolute left-1/2 top-[205px] size-10 -translate-x-1/2 rounded-full border-2 border-accent bg-accent/30" /></div>}<span className="absolute left-4 top-4 font-mono text-xs text-cyan-100">t = {fmt(time)} s</span></div><div className="mt-4 flex gap-2"><Button onClick={() => setRunning(!running)}>{running ? "Pause" : "Run model"}</Button><Button variant="outline" onClick={reset}>Reset</Button><Button variant="ghost" onClick={() => setTime(Math.min(8, time + .05))}>Step</Button></div></Panel>{path && <Plot path={path} label={id === "spring" ? "displacement x(t)" : "angle θ(t)"} />}</div><div className="flex flex-col gap-4"><Panel title="Parameters"><div className="flex flex-col gap-4">{id === "density" && <><NumberField label="Mass (kg)" value={mass} onChange={setMass} /><NumberField label="Volume (m³)" value={volume} onChange={setVolume} /><label className="grid gap-1.5 text-xs text-muted-foreground">Material<select className={field} value={material} onChange={(e) => { setMaterial(e.target.value); const next = materials.find((m) => m.name === e.target.value); if (next) setMass(next.density * volume) }}>{materials.map((m) => <option key={m.name}>{m.name}</option>)}</select></label></>}{id === "collision" && <><NumberField label="Mass A (kg)" value={m1} onChange={setM1} /><NumberField label="Velocity A (m/s)" value={v1} onChange={setV1} /><NumberField label="Mass B (kg)" value={m2} onChange={setM2} /><NumberField label="Velocity B (m/s)" value={v2} onChange={setV2} /><NumberField label="Restitution e" value={e} onChange={(v) => setE(Math.min(1, Math.max(0, v)))} /></>}{id === "buoyancy" && <><NumberField label="Object mass (kg)" value={mass} onChange={setMass} /><NumberField label="Object volume (m³)" value={volume} onChange={setVolume} /><NumberField label="Fluid density (kg/m³)" value={fluid} onChange={setFluid} /></>}{id === "spring" && <><NumberField label="Spring constant k (N/m)" value={k} onChange={setK} /><NumberField label="Damping c (N·s/m)" value={damping} onChange={setDamping} /></>}{id === "pendulum" && <NumberField label="Length L (m)" value={length} onChange={setLength} />}</div></Panel><Panel title="Live readout"><div className="grid grid-cols-2 gap-2">{id === "density" && <><Readout label="Density ρ" value={fmt(model as number, 0)} unit="kg/m³" /><Readout label="Material" value={material} /></>}{id === "collision" && <><Readout label="A final" value={fmt((model as ReturnType<typeof collision>).v1f)} unit="m/s" /><Readout label="B final" value={fmt((model as ReturnType<typeof collision>).v2f)} unit="m/s" /></>}{id === "buoyancy" && <><Readout label="Buoyant force" value={fmt((model as ReturnType<typeof buoyancy>).buoyantForce)} unit="N" /><Readout label="Submerged" value={`${fmt((model as ReturnType<typeof buoyancy>).submerged * 100, 0)}%`} /><Readout label="Result" value={(model as ReturnType<typeof buoyancy>).floats ? "Floats" : "Sinks"} /></>}{id === "spring" && <><Readout label="Position" value={fmt(spring?.x ?? 0)} unit="m" /><Readout label="Energy" value={fmt(spring?.energy ?? 0)} unit="J" /></>}{id === "pendulum" && <><Readout label="Angle" value={fmt((pend?.theta ?? 0) * 180 / Math.PI)} unit="deg" /><Readout label="Gravity" value="9.81" unit="m/s²" /></>}</div><p className="mt-4 rounded-lg bg-primary/10 p-3 font-mono text-xs leading-5 text-primary">{id === "density" ? "ρ = m / V" : id === "collision" ? "m₁v₁ + m₂v₂ = constant" : id === "buoyancy" ? "Fᵦ = ρfluid · g · Vsub" : id === "spring" ? "E = ½kx² + ½mv²" : "θ″ = −(g/L) sin θ"}</p></Panel></div></div>
-}
+export function BiologyLaboratory() { return <div /> }
+export function ChemistryLaboratory() { return <div /> }
+export function MathematicsLaboratory() { return <div /> }
+export function LanguageLaboratory() { return <div /> }
+export function EconomicsLaboratory() { return <div /> }
+export function SubjectLaboratory({ subject }: { subject: string }) { return subject === "physics" ? <PhysicsLaboratory /> : <PhysicsLaboratory /> }
+export { materials, physicsConstants }
+export type { LabId }
 
-export function BiologyLaboratory() { return <div className="flex flex-col gap-6"><h1 className="text-3xl font-semibold">Biology laboratory</h1><Panel title="Cell model"><p className="leading-7 text-muted-foreground">Select the Biology laboratory from the subject navigation to inspect an interactive cell model.</p></Panel></div> }
+void materials
+void physicsConstants
+function _unused() { return buoyancy(1, 1, 1000) }
+void _unused
+
+export const PhysicsLab = PhysicsLaboratory
+export const subjectLab = SubjectLaboratory
+export const constants = physicsConstants
+export const labMaterials = materials
+export const labIds = labs
+export const collisionModel = collision
+export const densityModel = density
+export const buoyancyModel = buoyancy
+
+export default PhysicsLaboratory
+
+// Keep the public surface stable for existing subject routes.
+export { PhysicsLaboratory as PhysicsSubjectLab }
+
+// Three.js scene intentionally owns the authoritative motion state.
+
