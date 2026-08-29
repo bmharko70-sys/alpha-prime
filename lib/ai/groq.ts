@@ -6,15 +6,20 @@ import { createGroq } from "@ai-sdk/groq"
 export const DEFAULT_GROQ_MODEL = "llama-3.1-8b-instant"
 
 export function groqModel() {
-  const apiKey = process.env.GROQ_API_KEY_2
+  const apiKey = process.env.GROQ_API_KEY_2?.trim() || process.env.GROQ_API_KEY?.trim()
   if (!apiKey) {
-    throw new Error("Groq is not configured. Set GROQ_API_KEY_2 in the server environment.")
+    throw new Error("Groq is not configured. Add a Groq API key to the server environment.")
   }
 
   const configuredModel = process.env.GROQ_MODEL?.trim()
-  const model = configuredModel === "llama-3.3-70b-versatile" || !configuredModel
+  const retiredModels = new Set([
+    "llama-3.3-70b-versatile",
+    "llama3-70b-8192",
+  ])
+  const model = !configuredModel || retiredModels.has(configuredModel.toLowerCase())
     ? DEFAULT_GROQ_MODEL
     : configuredModel
+
   return createGroq({ apiKey })(model)
 }
 
