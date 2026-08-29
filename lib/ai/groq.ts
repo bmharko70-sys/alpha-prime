@@ -2,7 +2,8 @@ import "server-only"
 
 import { createGroq } from "@ai-sdk/groq"
 
-export const DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
+// Groq retired llama-3.3-70b-versatile; this production model remains broadly available.
+export const DEFAULT_GROQ_MODEL = "llama-3.1-8b-instant"
 
 export function groqModel() {
   const apiKey = process.env.GROQ_API_KEY_2
@@ -10,7 +11,10 @@ export function groqModel() {
     throw new Error("Groq is not configured. Set GROQ_API_KEY_2 in the server environment.")
   }
 
-  const model = process.env.GROQ_MODEL?.trim() || DEFAULT_GROQ_MODEL
+  const configuredModel = process.env.GROQ_MODEL?.trim()
+  const model = configuredModel === "llama-3.3-70b-versatile" || !configuredModel
+    ? DEFAULT_GROQ_MODEL
+    : configuredModel
   return createGroq({ apiKey })(model)
 }
 
