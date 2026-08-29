@@ -25,6 +25,7 @@ export const TOOL_ENTRIES: SearchEntry[] = [
   { id: 'assistant', title: 'Science AI Assistant', subtitle: 'Ask questions, get computed answers', category: 'page', href: '/assistant', keywords: ['ai', 'chat', 'assistant', 'help'] },
   { id: 'physics', title: 'Physics', subtitle: 'Mechanics, waves, electromagnetism', category: 'page', href: '/physics', keywords: ['physics'] },
   { id: 'biology', title: 'Biology', subtitle: 'Cells, organisms, genetics', category: 'page', href: '/biology', keywords: ['biology'] },
+  { id: 'history-geography', title: 'History & Geography', subtitle: 'Civilizations, timelines, and places', category: 'page', href: '/history', keywords: ['history', 'geography', 'atlas', 'timeline', 'civilizations'] },
 ]
 
 export function buildSearchIndex(): SearchEntry[] {

@@ -13,6 +13,7 @@ import {
   Atom,
   Dna,
   Bot,
+  Globe2,
 } from "lucide-react"
 
 export interface NavItem {
@@ -41,5 +42,6 @@ export const TOP_NAV: NavItem[] = [
   { title: "Chemistry", href: "/chemistry", icon: FlaskConical },
   { title: "Physics", href: "/physics", icon: Atom },
   { title: "Biology", href: "/biology", icon: Dna },
+  { title: "History & Geography", href: "/history", icon: Globe2, description: "Explore civilizations, timelines, and places" },
   { title: "AI Assistant", href: "/assistant", icon: Bot },
 ]

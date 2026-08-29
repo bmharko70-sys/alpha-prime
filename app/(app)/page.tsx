@@ -1,13 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowDownRight, ArrowRight, Atom, Bot, Dna, FlaskConical, Grid3x3, Radio, Scale, Sparkles, TestTubes, Waves } from 'lucide-react'
+import { ArrowDownRight, ArrowRight, Atom, Bot, Dna, FlaskConical, Globe2, Grid3x3, Radio, Scale, Sparkles, TestTubes, Waves } from 'lucide-react'
 import { ScientificAtmosphere } from '@/components/scientific-atmosphere'
 
 const disciplines = [
   { title: 'Chemistry', code: 'CHEM-01', href: '/chemistry', icon: FlaskConical, status: 'ACTIVE', description: 'Matter, reaction, structure', accent: 'text-cyan-200' },
   { title: 'Physics', code: 'PHYS-02', href: '/physics', icon: Waves, status: 'BUILDING', description: 'Motion, energy, field', accent: 'text-amber-100' },
   { title: 'Biology', code: 'BIO-03', href: '/biology', icon: Dna, status: 'BUILDING', description: 'Life, cell, system', accent: 'text-emerald-200' },
+  { title: 'History & Geography', code: 'HIST-04', href: '/history', icon: Globe2, status: 'ACTIVE', description: 'Civilizations, place, time', accent: 'text-amber-200' },
 ]
 
 const tools = [
@@ -41,7 +42,7 @@ export default function HomePage() {
 
         <section className="space-y-7">
           <div className="flex items-end justify-between border-b border-slate-800 pb-4"><div><p className="font-mono text-[10px] tracking-[0.22em] text-slate-500">01 / DISCIPLINES</p><h2 className="mt-2 font-mono text-xl tracking-tight">Choose a system to observe</h2></div><ArrowDownRight className="size-5 text-slate-600" /></div>
-          <div className="grid gap-px overflow-hidden border border-slate-800 bg-slate-800 md:grid-cols-3">
+          <div className="grid gap-px overflow-hidden border border-slate-800 bg-slate-800 md:grid-cols-2 lg:grid-cols-4">
             {disciplines.map(({ title, code, href, icon: Icon, status, description, accent }) => <Link key={href} href={href} className="group bg-[#0b141c] p-6 transition-colors hover:bg-[#101f2a] sm:p-8"><div className="flex items-start justify-between"><Icon className={`size-6 ${accent}`} strokeWidth={1.3} /><span className="font-mono text-[9px] tracking-[0.18em] text-slate-600">{code}</span></div><div className="mt-14 flex items-end justify-between"><div><h3 className="font-mono text-lg">{title}</h3><p className="mt-2 text-sm text-slate-500">{description}</p><p className={`mt-5 font-mono text-[10px] tracking-[0.16em] ${status === 'ACTIVE' ? 'text-cyan-200' : 'text-slate-600'}`}>{status}</p></div><ArrowRight className="size-4 text-slate-600 transition-transform group-hover:translate-x-1 group-hover:text-cyan-200" /></div></Link>)}
           </div>
         </section>
