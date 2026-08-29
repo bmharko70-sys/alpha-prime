@@ -1,2 +1,5 @@
-import { BiologyPage } from "@/components/science/tool-page"
-export default function Page() { return <BiologyPage /> }
+import { BiologyWorkspace } from '@/components/biology/biology-workspace'
+
+export default function Page() {
+  return <BiologyWorkspace />
+}
