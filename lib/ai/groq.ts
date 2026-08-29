@@ -3,7 +3,7 @@ import "server-only"
 import { createGroq } from "@ai-sdk/groq"
 
 // Groq retired llama-3.3-70b-versatile; this production model remains broadly available.
-export const DEFAULT_GROQ_MODEL = "llama-3.1-8b-instant"
+export const DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
 
 export function groqModel() {
   const apiKey = process.env.GROQ_API_KEY_2?.trim() || process.env.GROQ_API_KEY?.trim()
@@ -20,7 +20,13 @@ export function groqModel() {
     ? DEFAULT_GROQ_MODEL
     : configuredModel
 
-  return createGroq({ apiKey })(model)
+  // Treat legacy unqualified Llama values as stale configuration rather than
+  // sending a known-retired model to Groq.
+  const normalizedModel = model.startsWith("llama-") || model.startsWith("llama3-")
+    ? DEFAULT_GROQ_MODEL
+    : model
+
+  return createGroq({ apiKey })(normalizedModel)
 }
 
 export function getAIErrorMessage(error: unknown) {

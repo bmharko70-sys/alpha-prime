@@ -22,7 +22,12 @@ export async function POST(request: Request) {
       messages: await convertToModelMessages(body.messages),
     })
 
-    return createUIMessageStreamResponse({ stream: toUIMessageStream({ stream: result.stream }) })
+    return createUIMessageStreamResponse({
+      stream: toUIMessageStream({
+        stream: result.stream,
+        onError: (error) => getAIErrorMessage(error),
+      }),
+    })
   } catch (error) {
     return Response.json({ error: getAIErrorMessage(error) }, { status: 502 })
   }
