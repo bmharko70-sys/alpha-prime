@@ -12,6 +12,9 @@ export type BiologySource = {
   snippet?: string
 }
 
+export type BiologyFlashcard = { front: string; back: string; sourceIds: string[] }
+export type BiologyQuestion = { prompt: string; options: string[]; answer: number; explanation: string; sourceIds: string[] }
+
 export type BiologyResearch = {
   query: string
   title: string
@@ -21,9 +24,11 @@ export type BiologyResearch = {
   keyFacts: { label: string; value: string; evidence: string[] }[]
   process: { stage: string; detail: string }[]
   timeline: { date: string; event: string; detail: string }[]
-  misconceptions: { myth: string; correction: string }[]
+  misconceptions?: { myth: string; correction: string }[]
   related: string[]
   sources: BiologySource[]
+  flashcards: BiologyFlashcard[]
+  questions: BiologyQuestion[]
   limitations?: string
 }
 
