@@ -1,10 +1,12 @@
 import { NextRequest } from 'next/server'
-import { generateText, gateway } from 'ai'
+import { generateText } from 'ai'
+import { createGroq } from '@ai-sdk/groq'
 import type { BiologyResearch, BiologySource, ResearchEvent } from '@/lib/biology/types'
 
 export const runtime = 'nodejs'
 const encoder = new TextEncoder()
-const model = process.env.AI_MODEL || 'groq/llama-3.3-70b-versatile'
+const groq = createGroq({ apiKey: process.env.GROQ_API_KEY })
+const model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 function emit(controller: ReadableStreamDefaultController, event: ResearchEvent) { controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`)) }
 
@@ -13,15 +15,33 @@ async function retrieve(query: string): Promise<BiologySource[]> {
   const response = await fetch(url, { signal: AbortSignal.timeout(12000), headers: { accept: 'application/json' } })
   if (!response.ok) throw new Error('Live Europe PMC retrieval failed')
   const results = (await response.json())?.resultList?.result ?? []
-  return results.slice(0, 6).filter((item: { title?: string }) => item.title).map((item: { id: string; title: string; journalTitle?: string; pubYear?: string; pmcid?: string; abstractText?: string }) => ({ id: item.id, title: item.title, url: item.pmcid ? `https://pmc.ncbi.nlm.nih.gov/articles/${item.pmcid}/` : `https://europepmc.org/article/MED/${item.id}`, publisher: item.journalTitle ?? 'Europe PMC', type: 'journal', published: item.pubYear, retrieved: new Date().toISOString().slice(0, 10), confidence: 'high', snippet: item.abstractText?.slice(0, 420) }))
+  const sources = results.slice(0, 6).filter((item: { title?: string }) => item.title).map((item: { id: string; title: string; journalTitle?: string; pubYear?: string; pmcid?: string; abstractText?: string }) => ({ id: item.id, title: item.title, url: item.pmcid ? `https://pmc.ncbi.nlm.nih.gov/articles/${item.pmcid}/` : `https://europepmc.org/article/MED/${item.id}`, publisher: item.journalTitle ?? 'Europe PMC', type: 'journal' as const, published: item.pubYear, retrieved: new Date().toISOString().slice(0, 10), confidence: 'high' as const, snippet: item.abstractText?.slice(0, 420) }))
+  if (sources.every((source: BiologySource) => !source.snippet)) {
+    try {
+      const wiki = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(query.replaceAll(' ', '_'))}`, { signal: AbortSignal.timeout(8000), headers: { accept: 'application/json' } })
+      if (wiki.ok) { const summary = await wiki.json(); if (summary.extract) sources.unshift({ id: 'WIKI', title: summary.title ?? query, url: summary.content_urls?.desktop?.page ?? `https://en.wikipedia.org/wiki/${encodeURIComponent(query.replaceAll(' ', '_'))}`, publisher: 'Wikipedia', type: 'reference', retrieved: new Date().toISOString().slice(0, 10), confidence: 'medium', snippet: summary.extract.slice(0, 900) }) }
+    } catch { /* Europe PMC remains usable when Wikipedia is unavailable. */ }
+  }
+  return sources
+}
+
+function evidenceFallback(query: string, sources: BiologySource[]): BiologyResearch {
+  const first = sources.find((source) => source.snippet) ?? sources[0]
+  const excerpt = first?.snippet ?? 'No abstract was returned by the live literature service.'
+  const ids = sources.slice(0, 3).map((source) => source.id)
+  return { query, sources, title: query, summary: excerpt, definition: excerpt, importance: ['This explanation is taken directly from live source abstracts because Groq generation was unavailable.'], keyFacts: sources.slice(0, 4).map((source, index) => ({ label: `Evidence ${index + 1}`, value: source.snippet ?? source.title, evidence: [source.id] })), process: [], timeline: [], related: [], flashcards: sources.slice(0, 5).map((source) => ({ front: `What does this source report about ${query}?`, back: source.snippet ?? source.title, sourceIds: [source.id] })), questions: ids.length ? [{ prompt: `Which source is directly associated with the live evidence for “${query}”?`, options: [first.title, 'No source was retrieved', 'An unrelated textbook', 'A simulated record'], answer: 0, explanation: `The live result is ${first.publisher}, record ${first.id}.`, sourceIds: [first.id] }] : [], limitations: 'Groq generation was unavailable, so the app displayed live source evidence without AI synthesis.' }
 }
 
 async function synthesize(query: string, sources: BiologySource[]): Promise<BiologyResearch> {
   const evidence = sources.map((source) => `[${source.id}] ${source.title}\n${source.snippet ?? ''}`).join('\n\n')
   const prompt = `You are a careful Biology tutor. Answer the user's question using ONLY the supplied evidence when making factual claims. If evidence is insufficient, say so. Return ONLY valid JSON matching this shape: {"title":string,"summary":string,"definition":string,"importance":string[],"keyFacts":[{"label":string,"value":string,"evidence":string[]}],"process":[{"stage":string,"detail":string}],"timeline":[{"date":string,"event":string,"detail":string}],"related":string[],"flashcards":[{"front":string,"back":string,"sourceIds":string[]}],"questions":[{"prompt":string,"options":string[],"answer":number,"explanation":string,"sourceIds":string[]}],"limitations":string}. Create 5 flashcards and 3 multiple-choice questions. Every evidence/sourceIds value must be an ID from the evidence list. Never invent citations.\nUSER QUESTION: ${query}\nEVIDENCE:\n${evidence}`
-  const result = await generateText({ model: gateway(model), prompt, temperature: 0.2 })
-  const parsed = JSON.parse(result.text) as Omit<BiologyResearch, 'query' | 'sources'>
-  return { query, sources, ...parsed, flashcards: parsed.flashcards ?? [], questions: parsed.questions ?? [] }
+  try {
+    const result = await generateText({ model: groq(model), prompt, temperature: 0.2 })
+    const parsed = JSON.parse(result.text) as Omit<BiologyResearch, 'query' | 'sources'>
+    return { query, sources, ...parsed, flashcards: parsed.flashcards ?? [], questions: parsed.questions ?? [] }
+  } catch {
+    return evidenceFallback(query, sources)
+  }
 }
 
 export async function POST(request: NextRequest) {
