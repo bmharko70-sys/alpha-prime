@@ -1,12 +1,10 @@
 import { NextRequest } from 'next/server'
 import { generateText } from 'ai'
-import { createGroq } from '@ai-sdk/groq'
 import type { BiologyResearch, BiologySource, ResearchEvent } from '@/lib/biology/types'
+import { groqModel } from '@/lib/ai/groq'
 
 export const runtime = 'nodejs'
 const encoder = new TextEncoder()
-const groq = createGroq({ apiKey: process.env.GROQ_API_KEY })
-const model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 function emit(controller: ReadableStreamDefaultController, event: ResearchEvent) { controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`)) }
 
@@ -36,7 +34,7 @@ async function synthesize(query: string, sources: BiologySource[]): Promise<Biol
   const evidence = sources.map((source) => `[${source.id}] ${source.title}\n${source.snippet ?? ''}`).join('\n\n')
   const prompt = `You are a careful Biology tutor. Answer the user's question using ONLY the supplied evidence when making factual claims. If evidence is insufficient, say so. Return ONLY valid JSON matching this shape: {"title":string,"summary":string,"definition":string,"importance":string[],"keyFacts":[{"label":string,"value":string,"evidence":string[]}],"process":[{"stage":string,"detail":string}],"timeline":[{"date":string,"event":string,"detail":string}],"related":string[],"flashcards":[{"front":string,"back":string,"sourceIds":string[]}],"questions":[{"prompt":string,"options":string[],"answer":number,"explanation":string,"sourceIds":string[]}],"limitations":string}. Create 5 flashcards and 3 multiple-choice questions. Every evidence/sourceIds value must be an ID from the evidence list. Never invent citations.\nUSER QUESTION: ${query}\nEVIDENCE:\n${evidence}`
   try {
-    const result = await generateText({ model: groq(model), prompt, temperature: 0.2 })
+    const result = await generateText({ model: groqModel(), prompt, temperature: 0.2 })
     const parsed = JSON.parse(result.text) as Omit<BiologyResearch, 'query' | 'sources'>
     return { query, sources, ...parsed, flashcards: parsed.flashcards ?? [], questions: parsed.questions ?? [] }
   } catch {

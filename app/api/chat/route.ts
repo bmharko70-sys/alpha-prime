@@ -5,6 +5,7 @@ import {
   toUIMessageStream,
   type UIMessage,
 } from "ai"
+import { getAIErrorMessage, groqModel } from "@/lib/ai/groq"
 
 export const maxDuration = 30
 
@@ -16,13 +17,13 @@ export async function POST(request: Request) {
     }
 
     const result = streamText({
-      model: process.env.AI_MODEL ?? "groq/llama-3.3-70b-versatile",
+      model: groqModel(),
       instructions: `You are Academia O1, a precise science tutor for Physics, Chemistry, and Biology. Explain step by step, use Markdown, preserve chemical formulas and units, and never invent measurements. If context is provided, use it to resolve references. Current context: ${body.context ?? "general study"}`,
       messages: await convertToModelMessages(body.messages),
     })
 
     return createUIMessageStreamResponse({ stream: toUIMessageStream({ stream: result.stream }) })
-  } catch {
-    return Response.json({ error: "The AI assistant couldn't connect. Please try again." }, { status: 502 })
+  } catch (error) {
+    return Response.json({ error: getAIErrorMessage(error) }, { status: 502 })
   }
 }
