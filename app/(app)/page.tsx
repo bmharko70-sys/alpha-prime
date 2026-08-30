@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { ArrowDownRight, ArrowRight, Atom, Bot, Dna, FlaskConical, Globe2, Grid3x3, Radio, Scale, Sparkles, TestTubes, Waves } from 'lucide-react'
 import { ScientificAtmosphere } from '@/components/scientific-atmosphere'
+import { Reveal } from '@/components/motion/reveal'
 
 const disciplines = [
   { title: 'Chemistry', code: 'CHEM-01', href: '/chemistry', icon: FlaskConical, status: 'ACTIVE', description: 'Matter, reaction, structure', accent: 'text-cyan-200' },
@@ -25,34 +26,34 @@ export default function HomePage() {
       <div className="relative mx-auto flex max-w-7xl flex-col gap-20 px-6 py-14 sm:px-10 lg:gap-28 lg:px-16 lg:py-20">
         <section className="grid items-end gap-12 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-8">
-            <div className="flex items-center gap-3 font-mono text-[10px] tracking-[0.26em] text-cyan-200/70"><span className="size-1.5 rounded-full bg-cyan-300 shadow-[0_0_14px_3px_rgba(103,232,249,0.55)]" /> SYSTEM ONLINE / OBSERVATION MODE</div>
-            <h1 className="max-w-4xl font-mono text-4xl font-medium leading-[1.08] tracking-[-0.04em] text-balance sm:text-6xl lg:text-7xl">The universe is a system.<br /><span className="text-cyan-200">Start exploring.</span></h1>
-            <p className="max-w-xl text-base leading-7 text-slate-400">Academia O1 is an interactive scientific laboratory for seeing the hidden structure inside matter, motion, and life.</p>
-            <div className="flex flex-wrap items-center gap-4">
-              <Link href="/chemistry" className="group inline-flex items-center gap-3 bg-cyan-200 px-5 py-3 font-mono text-xs tracking-[0.14em] text-[#071018] transition-transform hover:-translate-y-0.5">OPEN CHEMISTRY LAB <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" /></Link>
-              <Link href="/assistant" className="inline-flex items-center gap-2 border border-slate-700 px-5 py-3 font-mono text-xs tracking-[0.14em] text-slate-300 hover:border-cyan-200/50 hover:text-cyan-100"><Bot className="size-4" /> ASK THE ASSISTANT</Link>
-            </div>
+            <Reveal variant="fade" immediate className="flex items-center gap-3 font-mono text-[10px] tracking-[0.26em] text-cyan-200/70"><span className="size-1.5 rounded-full bg-cyan-300 shadow-[0_0_14px_3px_rgba(103,232,249,0.55)] status-breathe" /> SYSTEM ONLINE / OBSERVATION MODE</Reveal>
+            <Reveal immediate delay={1} as="h1" className="max-w-4xl font-mono text-4xl font-medium leading-[1.08] tracking-[-0.04em] text-balance sm:text-6xl lg:text-7xl">The universe is a system.<br /><span className="text-cyan-200">Start exploring.</span></Reveal>
+            <Reveal immediate delay={2} as="p" className="max-w-xl text-base leading-7 text-slate-400">Academia O1 is an interactive scientific laboratory for seeing the hidden structure inside matter, motion, and life.</Reveal>
+            <Reveal immediate delay={3} className="flex flex-wrap items-center gap-4">
+              <Link href="/chemistry" className="group press-feedback inline-flex items-center gap-3 bg-cyan-200 px-5 py-3 font-mono text-xs tracking-[0.14em] text-[#071018] transition-transform hover:-translate-y-0.5">OPEN CHEMISTRY LAB <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" /></Link>
+              <Link href="/assistant" className="press-feedback inline-flex items-center gap-2 border border-slate-700 px-5 py-3 font-mono text-xs tracking-[0.14em] text-slate-300 transition-colors hover:border-cyan-200/50 hover:text-cyan-100"><Bot className="size-4" /> ASK THE ASSISTANT</Link>
+            </Reveal>
           </div>
-          <div className="hidden border-l border-slate-700/70 pl-8 font-mono text-xs text-slate-500 lg:block">
-            <div className="mb-8 flex items-center justify-between border-b border-slate-800 pb-3 text-[10px] tracking-[0.2em]"><span>LABORATORY STATUS</span><Radio className="size-3 text-cyan-200" /></div>
+          <Reveal variant="fade" delay={2} className="hidden border-l border-slate-700/70 pl-8 font-mono text-xs text-slate-500 lg:block">
+            <div className="mb-8 flex items-center justify-between border-b border-slate-800 pb-3 text-[10px] tracking-[0.2em]"><span>LABORATORY STATUS</span><Radio className="size-3 text-cyan-200 status-breathe" /></div>
             <div className="space-y-5"><p className="flex justify-between"><span>DATA LAYER</span><span className="text-cyan-200">CONNECTED</span></p><p className="flex justify-between"><span>MODEL ENGINE</span><span className="text-cyan-200">READY</span></p><p className="flex justify-between"><span>LAST CALIBRATION</span><span>JUST NOW</span></p></div>
             <div className="mt-12 flex items-center gap-2 text-cyan-200/70"><Sparkles className="size-3" /> REAL DATA. WORKING MODELS. NO SHORTCUTS.</div>
-          </div>
+          </Reveal>
         </section>
 
-        <section className="space-y-7">
+        <Reveal as="section" className="space-y-7">
           <div className="flex items-end justify-between border-b border-slate-800 pb-4"><div><p className="font-mono text-[10px] tracking-[0.22em] text-slate-500">01 / DISCIPLINES</p><h2 className="mt-2 font-mono text-xl tracking-tight">Choose a system to observe</h2></div><ArrowDownRight className="size-5 text-slate-600" /></div>
           <div className="grid gap-px overflow-hidden border border-slate-800 bg-slate-800 md:grid-cols-2 lg:grid-cols-4">
-            {disciplines.map(({ title, code, href, icon: Icon, status, description, accent }) => <Link key={href} href={href} className="group bg-[#0b141c] p-6 transition-colors hover:bg-[#101f2a] sm:p-8"><div className="flex items-start justify-between"><Icon className={`size-6 ${accent}`} strokeWidth={1.3} /><span className="font-mono text-[9px] tracking-[0.18em] text-slate-600">{code}</span></div><div className="mt-14 flex items-end justify-between"><div><h3 className="font-mono text-lg">{title}</h3><p className="mt-2 text-sm text-slate-500">{description}</p><p className={`mt-5 font-mono text-[10px] tracking-[0.16em] ${status === 'ACTIVE' ? 'text-cyan-200' : 'text-slate-600'}`}>{status}</p></div><ArrowRight className="size-4 text-slate-600 transition-transform group-hover:translate-x-1 group-hover:text-cyan-200" /></div></Link>)}
+            {disciplines.map(({ title, code, href, icon: Icon, status, description, accent }, i) => <Reveal key={href} delay={Math.min(i, 6) as 0 | 1 | 2 | 3 | 4 | 5 | 6} className="contents"><Link href={href} className="group press-feedback bg-[#0b141c] p-6 transition-colors hover:bg-[#101f2a] sm:p-8"><div className="flex items-start justify-between"><Icon className={`size-6 ${accent}`} strokeWidth={1.3} /><span className="font-mono text-[9px] tracking-[0.18em] text-slate-600">{code}</span></div><div className="mt-14 flex items-end justify-between"><div><h3 className="font-mono text-lg">{title}</h3><p className="mt-2 text-sm text-slate-500">{description}</p><p className={`mt-5 font-mono text-[10px] tracking-[0.16em] ${status === 'ACTIVE' ? 'text-cyan-200' : 'text-slate-600'}`}>{status}</p></div><ArrowRight className="size-4 text-slate-600 transition-transform group-hover:translate-x-1 group-hover:text-cyan-200" /></div></Link></Reveal>)}
           </div>
-        </section>
+        </Reveal>
 
-        <section className="space-y-7">
+        <Reveal as="section" className="space-y-7">
           <div className="flex items-end justify-between border-b border-slate-800 pb-4"><div><p className="font-mono text-[10px] tracking-[0.22em] text-slate-500">02 / INSTRUMENTS</p><h2 className="mt-2 font-mono text-xl tracking-tight">Featured laboratory tools</h2></div><Link href="/chemistry" className="hidden font-mono text-[10px] tracking-[0.16em] text-cyan-200 hover:text-cyan-100 sm:block">VIEW ALL TOOLS →</Link></div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{tools.map(({ title, meta, href, icon: Icon }) => <Link key={href} href={href} className="group border border-slate-800 bg-[#0d1922]/80 p-5 hover:border-cyan-200/40"><Icon className="size-5 text-cyan-200/70" strokeWidth={1.3} /><h3 className="mt-10 font-mono text-sm">{title}</h3><p className="mt-2 font-mono text-[9px] tracking-[0.1em] text-slate-600">{meta}</p></Link>)}</div>
-        </section>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{tools.map(({ title, meta, href, icon: Icon }, i) => <Reveal key={href} delay={Math.min(i, 6) as 0 | 1 | 2 | 3 | 4 | 5 | 6} className="contents"><Link href={href} className="group surface-interactive border border-slate-800 bg-[#0d1922]/80 p-5 hover:border-cyan-200/40"><Icon className="size-5 text-cyan-200/70" strokeWidth={1.3} /><h3 className="mt-10 font-mono text-sm">{title}</h3><p className="mt-2 font-mono text-[9px] tracking-[0.1em] text-slate-600">{meta}</p></Link></Reveal>)}</div>
+        </Reveal>
 
-        <section className="flex flex-col gap-6 border border-cyan-200/20 bg-cyan-200/[0.035] p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8"><div className="flex items-start gap-4"><div className="flex size-10 shrink-0 items-center justify-center border border-cyan-200/30 text-cyan-200"><Bot className="size-5" /></div><div><p className="font-mono text-sm">Need a research partner?</p><p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">Ask the assistant to look up elements, balance equations, compute pH, and explain the result with verified tool calls.</p></div></div><Link href="/assistant" className="inline-flex shrink-0 items-center gap-2 font-mono text-xs tracking-[0.14em] text-cyan-200 hover:text-white">START A SESSION <ArrowRight className="size-4" /></Link></section>
+        <Reveal as="section" variant="scale" className="flex flex-col gap-6 border border-cyan-200/20 bg-cyan-200/[0.035] p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8"><div className="flex items-start gap-4"><div className="flex size-10 shrink-0 items-center justify-center border border-cyan-200/30 text-cyan-200"><Bot className="size-5" /></div><div><p className="font-mono text-sm">Need a research partner?</p><p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">Ask the assistant to look up elements, balance equations, compute pH, and explain the result with verified tool calls.</p></div></div><Link href="/assistant" className="press-feedback inline-flex shrink-0 items-center gap-2 font-mono text-xs tracking-[0.14em] text-cyan-200 hover:text-white">START A SESSION <ArrowRight className="size-4" /></Link></Reveal>
       </div>
     </main>
   )

@@ -12,6 +12,8 @@ import { MOLECULES, MOLECULE_CATALOG } from "@/lib/science/data/molecules"
 import { Button } from "@/components/ui/button"
 import { AiTutor } from "@/components/science/ai-tutor"
 import { PhysicsLaboratory, BiologyLaboratory } from "@/components/science/subject-lab"
+import { Reveal } from "@/components/motion/reveal"
+import { AnimatedToast } from "@/components/motion/animated-toast"
 
 const inputClass = "h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary"
 
@@ -25,10 +27,10 @@ function verifyEquation(result: BalancedEquation) {
 }
 
 export function ToolPage({ title, eyebrow, description, children }: { title: string; eyebrow: string; description: string; children?: React.ReactNode }) {
-  return <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-5 py-8 md:px-8"><div className="max-w-3xl"><p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">{eyebrow}</p><h1 className="mt-3 text-balance text-4xl font-semibold tracking-tight md:text-5xl">{title}</h1><p className="mt-4 text-pretty leading-7 text-muted-foreground">{description}</p></div>{children}</main>
+  return <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-5 py-8 md:px-8"><Reveal immediate className="max-w-3xl"><p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">{eyebrow}</p><h1 className="mt-3 text-balance text-4xl font-semibold tracking-tight md:text-5xl">{title}</h1><p className="mt-4 text-pretty leading-7 text-muted-foreground">{description}</p></Reveal>{children}</main>
 }
 
-export function Panel({ title, children }: { title: string; children: React.ReactNode }) { return <section className="rounded-2xl border border-border bg-card p-5 shadow-sm"><h2 className="font-mono text-xs uppercase tracking-[0.16em] text-muted-foreground">{title}</h2><div className="mt-5">{children}</div></section> }
+export function Panel({ title, children }: { title: string; children: React.ReactNode }) { return <Reveal as="section" className="rounded-2xl border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/30"><h2 className="font-mono text-xs uppercase tracking-[0.16em] text-muted-foreground">{title}</h2><div className="mt-5">{children}</div></Reveal> }
 
 export function EquationTool() {
   const [equation, setEquation] = React.useState("Fe + O2 -> Fe2O3")
@@ -38,11 +40,11 @@ export function EquationTool() {
   return <ToolPage eyebrow="Chemistry / equation & reaction lab" title="Balance. Verify. Understand." description="Parse a reaction, solve its exact stoichiometric coefficients, and independently verify conservation of every element.">
     <div className="grid gap-6 lg:grid-cols-[1.35fr_.65fr]">
       <Panel title="Reaction input">
-        <div className="flex flex-col gap-3 md:flex-row"><input aria-label="Chemical equation" className={inputClass} value={equation} onChange={(e) => setEquation(e.target.value)} /><Button onClick={() => setResult(balanceEquation(equation))}>Balance reaction</Button></div>
-        <div className="mt-4 flex flex-wrap gap-2">{["H2 + O2 -> H2O", "C3H8 + O2 -> CO2 + H2O", "NaOH + HCl -> NaCl + H2O"].map((example) => <button key={example} className="rounded-full border border-border px-3 py-1.5 font-mono text-xs text-muted-foreground hover:border-primary hover:text-foreground" onClick={() => { setEquation(example); setResult(balanceEquation(example)) }}>{example}</button>)}</div>
-        {result.error ? <p className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{result.error}</p> : <><div className="mt-6 overflow-x-auto rounded-xl bg-muted/50 p-5 text-center font-mono text-lg">{result.reactants.map((x) => `${x.coefficient === 1 ? "" : x.coefficient}${x.formula}`).join(" + ")} → {result.products.map((x) => `${x.coefficient === 1 ? "" : x.coefficient}${x.formula}`).join(" + ")}</div><p className="mt-3 text-sm text-muted-foreground">Reaction type: <span className="font-medium capitalize text-foreground">{classifyReaction(result).replaceAll("-", " ")}</span></p></>}
+        <div className="flex flex-col gap-3 md:flex-row"><input aria-label="Chemical equation" className={inputClass} value={equation} onChange={(e) => setEquation(e.target.value)} /><Button className="press-feedback" onClick={() => setResult(balanceEquation(equation))}>Balance reaction</Button></div>
+        <div className="mt-4 flex flex-wrap gap-2">{["H2 + O2 -> H2O", "C3H8 + O2 -> CO2 + H2O", "NaOH + HCl -> NaCl + H2O"].map((example) => <button key={example} className="press-feedback rounded-full border border-border px-3 py-1.5 font-mono text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground" onClick={() => { setEquation(example); setResult(balanceEquation(example)) }}>{example}</button>)}</div>
+        {result.error ? <AnimatedToast tone="error" className="mt-4" message={result.error} /> : <Reveal key={balancedText} immediate variant="scale"><div className="mt-6 overflow-x-auto rounded-xl bg-muted/50 p-5 text-center font-mono text-lg">{result.reactants.map((x) => `${x.coefficient === 1 ? "" : x.coefficient}${x.formula}`).join(" + ")} → {result.products.map((x) => `${x.coefficient === 1 ? "" : x.coefficient}${x.formula}`).join(" + ")}</div><p className="mt-3 text-sm text-muted-foreground">Reaction type: <span className="font-medium capitalize text-foreground">{classifyReaction(result).replaceAll("-", " ")}</span></p></Reveal>}
       </Panel>
-      <Panel title="Verification"><div className="flex flex-col gap-3">{verify.map((row) => <div key={row.element} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 font-mono text-sm"><span>{row.element}</span><span>{row.reactants} = {row.products}</span></div>)}{result.balanced && <p className="rounded-lg bg-primary/10 p-3 text-sm font-medium text-primary">✓ Independently verified: atoms are conserved.</p>}</div></Panel>
+      <Panel title="Verification"><div className="flex flex-col gap-3">{verify.map((row, i) => <Reveal key={row.element} immediate variant="fade" delay={Math.min(i, 6) as 0 | 1 | 2 | 3 | 4 | 5 | 6} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 font-mono text-sm"><span>{row.element}</span><span>{row.reactants} = {row.products}</span></Reveal>)}{result.balanced && <AnimatedToast tone="success" message="Independently verified: atoms are conserved." />}</div></Panel>
     </div>
     {result.balanced && <Panel title="Generated working"><div className="grid gap-3 sm:grid-cols-3"><Metric label="Parsed compounds" value={`${result.reactants.length + result.products.length}`} /><Metric label="Smallest coefficients" value={balancedText} /><Metric label="Method" value="Exact integer matrix" /></div><details className="mt-5 rounded-lg border border-border p-4"><summary className="cursor-pointer font-medium">Show balancing steps</summary><ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-6 text-muted-foreground"><li>Identify the elements present in the parsed formulas.</li><li>Build a stoichiometric matrix with products negated.</li><li>Solve the null-space vector, reduce to the smallest whole numbers, then verify each atom count.</li></ol></details></Panel>}
   </ToolPage>

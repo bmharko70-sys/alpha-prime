@@ -31,10 +31,10 @@ export function GlobalSearchTrigger({ className }: { className?: string }) {
     <>
       <Button
         variant="outline"
-        className={className ?? "w-full justify-start gap-2 text-muted-foreground sm:w-64"}
+        className={className ?? "w-full justify-start gap-2 text-muted-foreground sm:w-64" + " press-feedback"}
         onClick={() => setOpen(true)}
       >
-        <Search data-icon="inline-start" />
+        <Search data-icon="inline-start" className="transition-transform duration-200 group-hover/button:scale-110" />
         <span className="flex-1 text-left">Search elements, tools…</span>
         <Kbd>⌘K</Kbd>
       </Button>
@@ -112,21 +112,26 @@ export function GlobalSearchDialog({
       <Command>
         <CommandInput placeholder="Search elements, molecules, tools…" value={query} onValueChange={setQuery} />
         <CommandList>
-          <CommandEmpty>{webState.loading ? <span className="flex items-center gap-2"><Loader2 className="animate-spin" /> Searching live web sources…</span> : webState.error ? <span className="text-destructive">{webState.error}</span> : "No local results. Live research is still loading."}</CommandEmpty>
+          <CommandEmpty>{webState.loading ? <span className="flex items-center gap-2"><Loader2 className="status-spin" /> Searching live web sources…</span> : webState.error ? <span className="text-destructive">{webState.error}</span> : "No local results. Live research is still loading."}</CommandEmpty>
           {webState.data && (
-            <CommandGroup heading="Live web research">
+            <CommandGroup heading="Live web research" className="reveal reveal-fade reveal-visible">
               <CommandItem value={`web-${query}`} onSelect={() => { onOpenChange(false); router.push(`/research?q=${encodeURIComponent(query)}`) }}>
                 <Globe className="text-cyan-300" />
                 <div className="flex min-w-0 flex-col gap-1"><span className="truncate">{webState.data.answer.title}</span><span className="line-clamp-2 text-xs text-muted-foreground">{webState.data.answer.answer}</span><span className="text-[10px] text-cyan-300">{webState.data.sources.length} web sources · {webState.data.domain}</span></div>
               </CommandItem>
             </CommandGroup>
           )}
-          {Array.from(grouped.entries()).map(([category, entries]) => {
+          {Array.from(grouped.entries()).map(([category, entries], groupIndex) => {
             const meta = CATEGORY_META[category]
             return (
-              <CommandGroup key={category} heading={meta.label}>
+              <CommandGroup
+                key={category}
+                heading={meta.label}
+                className="reveal reveal-fade reveal-visible"
+                style={{ animationDelay: `${groupIndex * 40}ms` }}
+              >
                 {entries.slice(0, category === "element" ? 12 : 8).map((entry) => (
-                  <CommandItem key={entry.id} value={entry.id} onSelect={() => handleSelect(entry)}>
+                  <CommandItem key={entry.id} value={entry.id} onSelect={() => handleSelect(entry)} className="transition-colors duration-150">
                     <meta.icon className="text-muted-foreground" />
                     <div className="flex flex-col">
                       <span>{entry.title}</span>
