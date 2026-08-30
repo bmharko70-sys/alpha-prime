@@ -10,11 +10,15 @@ const encoder = new TextEncoder()
 const emit = (c: ReadableStreamDefaultController, e: ResearchEvent) => c.enqueue(encoder.encode(`data: ${JSON.stringify(e)}\n\n`))
 
 async function retrieveOne(query: string): Promise<BiologySource[]> {
-  const url = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&pageSize=12&resultType=core&sort=RELEVANCE&query=${encodeURIComponent(`${query} AND OPEN_ACCESS:Y`)}`
-  const response = await fetch(url, { signal: AbortSignal.timeout(12000), headers: { accept: 'application/json' } })
-  if (!response.ok) throw new Error('Europe PMC retrieval failed')
-  const results = (await response.json())?.resultList?.result ?? []
-  return results.filter((x: any) => x.id && x.title && x.abstractText).map((x: any) => ({ id: String(x.doi ?? x.id), title: x.title, url: x.pmcid ? `https://pmc.ncbi.nlm.nih.gov/articles/${x.pmcid}/` : `https://europepmc.org/article/MED/${x.id}`, publisher: x.journalTitle ?? 'Europe PMC', type: 'journal', published: x.pubYear, retrieved: new Date().toISOString().slice(0, 10), confidence: 'high', snippet: x.abstractText.slice(0, 900) }))
+  const base = 'https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&pageSize=12&resultType=core&sort=RELEVANCE'
+  const run = async (term: string) => {
+    const response = await fetch(`${base}&query=${encodeURIComponent(term)}`, { signal: AbortSignal.timeout(12000), headers: { accept: 'application/json' } })
+    if (!response.ok) throw new Error('Europe PMC retrieval failed')
+    return (await response.json())?.resultList?.result ?? []
+  }
+  let results = await run(`${query} AND OPEN_ACCESS:Y`)
+  if (!results.some((x: any) => x.abstractText || x.title)) results = await run(query)
+  return results.filter((x: any) => x.id && x.title && (x.abstractText || x.authorString || x.journalTitle)).map((x: any) => ({ id: String(x.doi ?? x.pmcid ?? x.id), title: x.title, url: x.pmcid ? `https://pmc.ncbi.nlm.nih.gov/articles/${x.pmcid}/` : `https://europepmc.org/article/MED/${x.id}`, publisher: x.journalTitle ?? 'Europe PMC', type: 'journal', published: x.pubYear, retrieved: new Date().toISOString().slice(0, 10), confidence: 'high', snippet: String(x.abstractText ?? `${x.title}. Published in ${x.journalTitle ?? 'Europe PMC'}.`).slice(0, 900) }))
 }
 
 async function retrieve(parsed: ReturnType<typeof parseBiologyQuery>) {
