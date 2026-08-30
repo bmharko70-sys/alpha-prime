@@ -58,7 +58,15 @@ export const buoyancyStep = (y:number, vy:number, mass:number, volume:number, fl
   const submergedFraction=clamp((fluidSurface-bottom)/size,0,1)
   const submergedVolume=v*submergedFraction
   const weight=m*gravity, buoyantForce=fd*gravity*submergedVolume, netForce=buoyantForce-weight, ay=netForce/m
-  const nextVy=finite(vy)+ay*dt
+  // Model surface bobbing as a damped harmonic oscillator. The restoring stiffness of a floating
+  // object is k = rho_f * g * A (A = waterplane area), giving natural frequency omega = sqrt(k/m).
+  // Applying ~critical damping (only while in contact with the fluid) makes the object settle at its
+  // equilibrium depth within a few cycles without changing that equilibrium.
+  const area=size*size
+  const omega=Math.sqrt((fd*gravity*area)/m)
+  // Capped per-step velocity decay keeps explicit integration stable across the full input range.
+  const decay=submergedFraction>0?clamp(1.4*omega*dt,0,1):0
+  const nextVy=(finite(vy)+ay*dt)*(1-decay)
   const nextY=finite(y)+nextVy*dt
   const restingY=fluidSurface+size/2
   const groundedY=fluidBottom+size/2
