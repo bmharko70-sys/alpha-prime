@@ -22,12 +22,22 @@ async function retrieve(parsed: ReturnType<typeof parseBiologyQuery>) {
   const sources = batches.flatMap((b) => b.status === 'fulfilled' ? b.value : [])
   const unique = [...new Map(sources.map((s) => [s.id, s])).values()].slice(0, 10)
   if (unique.length < 3) {
-    try { const r = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(parsed.keywords.slice(0, 5).join('_'))}`, { signal: AbortSignal.timeout(8000), headers: { accept: 'application/json' } }); const x = await r.json(); if (x.extract) unique.push({ id: 'WIKI', title: x.title ?? parsed.originalQuery, url: x.content_urls?.desktop?.page ?? `https://en.wikipedia.org/wiki/${encodeURIComponent(x.title ?? parsed.originalQuery)}`, publisher: 'Wikipedia', type: 'reference', retrieved: new Date().toISOString().slice(0, 10), confidence: 'medium', snippet: x.extract.slice(0, 900) }) } catch { /* evidence may be empty */ }
+    try {
+      const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(parsed.keywords.join(' '))}&srlimit=1&format=json&origin=*`
+      const searchResponse = await fetch(searchUrl, { signal: AbortSignal.timeout(8000), headers: { accept: 'application/json' } })
+      const search = await searchResponse.json()
+      const title = search?.query?.search?.[0]?.title
+      if (title) {
+        const r = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`, { signal: AbortSignal.timeout(8000), headers: { accept: 'application/json' } })
+        const x = await r.json()
+        if (x.extract) unique.push({ id: 'WIKI', title: x.title ?? title, url: x.content_urls?.desktop?.page ?? `https://en.wikipedia.org/wiki/${encodeURIComponent(title)}`, publisher: 'Wikipedia', type: 'reference', retrieved: new Date().toISOString().slice(0, 10), confidence: 'medium', snippet: x.extract.slice(0, 900) })
+      }
+    } catch { /* evidence may be empty */ }
   }
   return unique
 }
 
-async function fallback(query: string, sources: BiologySource[], parsedQuery?: ReturnType<typeof parseBiologyQuery>): Promise<BiologyResearch> { let text = ''; try { text = await groqRetrievalFallback(query, 'biology') } catch {} const first = sources[0]; return { query, parsedQuery: parsedQuery ? { originalQuery: parsedQuery.originalQuery, normalizedQuery: parsedQuery.normalizedQuery, keywords: parsedQuery.keywords, intent: parsedQuery.intent, correction: parsedQuery.correction } : undefined, title: query, summary: isUsableGroqFallback(text) ? text : first?.snippet ?? 'No live evidence was returned.', definition: first?.snippet ?? 'No source abstract was returned.', importance: [], keyFacts: sources.slice(0, 5).map((s, i) => ({ label: `Evidence ${i + 1}`, value: s.snippet ?? s.title, evidence: [s.id] })), process: [], timeline: [], related: [], sources, flashcards: [], questions: [], limitations: 'Evidence was limited; inspect the linked source records before relying on this orientation.' }
+async function fallback(query: string, sources: BiologySource[], parsedQuery?: ReturnType<typeof parseBiologyQuery>): Promise<BiologyResearch> { let text = ''; try { text = await groqRetrievalFallback(query, 'biology') } catch {} const first = sources[0]; return { query, parsedQuery: parsedQuery ? { originalQuery: parsedQuery.originalQuery, normalizedQuery: parsedQuery.normalizedQuery, keywords: parsedQuery.keywords, intent: parsedQuery.intent, correction: parsedQuery.correction } : undefined, title: query, summary: isUsableGroqFallback(text) ? text : first?.snippet ?? 'The academic and reference searches returned no matching records for this query. Try a more specific Biology term or rephrase the question.', definition: first?.snippet ?? 'No source abstract was returned.', importance: [], keyFacts: sources.slice(0, 5).map((s, i) => ({ label: `Evidence ${i + 1}`, value: s.snippet ?? s.title, evidence: [s.id] })), process: [], timeline: [], related: [], sources, flashcards: [], questions: [], limitations: 'Evidence was limited; inspect the linked source records before relying on this orientation.' }
 }
 
 async function synthesize(query: string, parsedQuery: ReturnType<typeof parseBiologyQuery>, sources: BiologySource[]) {
