@@ -24,6 +24,13 @@ async function retrieveOne(query: string): Promise<BiologySource[]> {
 async function retrieve(parsed: ReturnType<typeof parseBiologyQuery>) {
   const batches = await Promise.allSettled(parsed.variants.slice(0, 4).map(retrieveOne))
   const sources = batches.flatMap((b) => b.status === 'fulfilled' ? b.value : [])
+  if (parsed.intent === 'research' || parsed.recent) {
+    try {
+      const response = await fetch(`https://api.crossref.org/works?query=${encodeURIComponent(parsed.keywords.join(' '))}&filter=from-pub-date:2020-01-01&rows=5&select=DOI,title,URL,published,container-title`, { signal: AbortSignal.timeout(10000), headers: { accept: 'application/json' } })
+      const items = (await response.json())?.message?.items ?? []
+      sources.push(...items.filter((item: any) => item.DOI && item.title?.[0]).map((item: any) => ({ id: String(item.DOI), title: item.title[0], url: item.URL ?? `https://doi.org/${item.DOI}`, publisher: item['container-title']?.[0] ?? 'Crossref', type: 'journal', published: String(item.published?.['date-parts']?.[0]?.[0] ?? ''), retrieved: new Date().toISOString().slice(0, 10), confidence: 'high', snippet: `${item.title[0]} — recent scholarly record indexed by Crossref.` })))
+    } catch { /* optional recent provider */ }
+  }
   const unique = [...new Map(sources.map((s) => [s.id, s])).values()].slice(0, 10)
   if (unique.length < 3) {
     try {
@@ -48,7 +55,11 @@ async function synthesize(query: string, parsedQuery: ReturnType<typeof parseBio
   if (!sources.length) return fallback(query, sources, parsedQuery)
   const evidence = sources.map((s) => `[${s.id}] ${s.title}\n${s.snippet ?? ''}`).join('\n\n')
   const prompt = `You are an evidence-grounded Biology tutor. Use only the evidence below for factual claims. Return valid JSON with title, summary, definition, importance (array), keyFacts (label,value,evidence), process (stage,detail), timeline, related, flashcards (front,back,sourceIds), questions (prompt,options,answer,explanation,sourceIds), limitations, and optional comparison {headers,rows} and sections {title,content,evidence}. Make sections dynamic and empty when inapplicable. Preserve uncertainty and conflicts. Every source ID must exactly match the evidence IDs. Original question: ${query}\nNormalized: ${parsedQuery.normalizedQuery}\nEvidence:\n${evidence}`
-  try { const result = await generateText({ model: groqModel(), prompt, temperature: 0.2 }); const value = JSON.parse(result.text); return { query, parsedQuery: { originalQuery: parsedQuery.originalQuery, normalizedQuery: parsedQuery.normalizedQuery, keywords: parsedQuery.keywords, intent: parsedQuery.intent, correction: parsedQuery.correction }, sources, ...value, flashcards: Array.isArray(value.flashcards) ? value.flashcards.slice(0, 5) : [], questions: Array.isArray(value.questions) ? value.questions.slice(0, 3) : [] } as BiologyResearch } catch { return fallback(query, sources) }
+  try { const result = await generateText({ model: groqModel(), prompt, temperature: 0.2 }); const value = JSON.parse(result.text); const safeSources = sources.filter((source) => source.id && source.title && source.url)
+    const validEvidence = (ids: unknown) => Array.isArray(ids) ? ids.filter((id) => safeSources.some((source) => source.id === id)) : []
+    value.keyFacts = Array.isArray(value.keyFacts) ? value.keyFacts.map((fact: any) => ({ ...fact, evidence: validEvidence(fact.evidence) })) : []
+    value.flashcards = Array.isArray(value.flashcards) ? value.flashcards.map((card: any) => ({ ...card, sourceIds: validEvidence(card.sourceIds) })) : []
+    return { query, entityType: parsedQuery.entityType, evidenceLevel: safeSources.length >= 3 ? 'high' : safeSources.length ? 'moderate' : 'low', parsedQuery: { originalQuery: parsedQuery.originalQuery, normalizedQuery: parsedQuery.normalizedQuery, keywords: parsedQuery.keywords, intent: parsedQuery.intent, entityType: parsedQuery.entityType, correction: parsedQuery.correction, recent: parsedQuery.recent }, sources: safeSources, ...value, flashcards: Array.isArray(value.flashcards) ? value.flashcards.slice(0, 5) : [], questions: Array.isArray(value.questions) ? value.questions.slice(0, 3) : [] } as BiologyResearch } catch { return fallback(query, sources, parsedQuery) }
 }
 
 export async function POST(request: NextRequest) {
