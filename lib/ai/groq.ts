@@ -6,9 +6,11 @@ import { createGroq } from "@ai-sdk/groq"
 export const DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
 
 export function groqModel() {
-  const apiKey = process.env.GROQ_API_KEY_2?.trim() || process.env.GROQ_API_KEY?.trim()
+  // Prefer the conventional key. GROQ_API_KEY_2 is kept as a backwards-compatible fallback,
+  // but stale secondary keys can otherwise mask a valid primary key.
+  const apiKey = process.env.GROQ_API_KEY?.trim() || process.env.GROQ_API_KEY_2?.trim()
   if (!apiKey) {
-    throw new Error("Groq is not configured. Add a Groq API key to the server environment.")
+    throw new Error("Groq is not configured. Add GROQ_API_KEY to the server environment.")
   }
 
   const configuredModel = process.env.GROQ_MODEL?.trim()
@@ -33,5 +35,12 @@ export function getAIErrorMessage(error: unknown) {
   if (error instanceof Error && error.message.includes("Groq is not configured")) {
     return error.message
   }
-  return "Groq could not generate a response. Check GROQ_API_KEY_2 and GROQ_MODEL, then try again."
+  const message = error instanceof Error ? error.message.toLowerCase() : ""
+  if (message.includes("api key") || message.includes("invalid_api_key") || message.includes("401")) {
+    return "Groq rejected the server API key. Update GROQ_API_KEY in the project environment, then retry."
+  }
+  if (message.includes("model") || message.includes("404")) {
+    return `Groq could not find the configured model. Use ${DEFAULT_GROQ_MODEL} in GROQ_MODEL, then retry.`
+  }
+  return "Groq could not generate a response. Check the server Groq configuration, then try again."
 }
