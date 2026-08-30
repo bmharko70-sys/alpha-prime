@@ -9,11 +9,11 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 function emit(controller: ReadableStreamDefaultController, event: ResearchEvent) { controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`)) }
 
 async function retrieve(query: string): Promise<BiologySource[]> {
-  const url = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&pageSize=12&resultType=core&sort=CITED%20desc&query=${encodeURIComponent(`${query} AND OPEN_ACCESS:Y AND (ABSTRACT:*)`)}`
+  const url = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&pageSize=20&resultType=core&sort=RELEVANCE&query=${encodeURIComponent(`${query} AND OPEN_ACCESS:Y AND (ABSTRACT:*)`)}`
   const response = await fetch(url, { signal: AbortSignal.timeout(12000), headers: { accept: 'application/json' } })
   if (!response.ok) throw new Error('Live Europe PMC retrieval failed')
   const results = (await response.json())?.resultList?.result ?? []
-  const sources = results.filter((item: { title?: string; abstractText?: string }) => item.title && item.abstractText).map((item: { id: string; title: string; journalTitle?: string; pubYear?: string; pmcid?: string; abstractText?: string }) => ({ id: item.id, title: item.title, url: item.pmcid ? `https://pmc.ncbi.nlm.nih.gov/articles/${item.pmcid}/` : `https://europepmc.org/article/MED/${item.id}`, publisher: item.journalTitle ?? 'Europe PMC', type: 'journal' as const, published: item.pubYear, retrieved: new Date().toISOString().slice(0, 10), confidence: 'high' as const, snippet: item.abstractText?.slice(0, 420) }))
+  const sources = results.filter((item: { title?: string; abstractText?: string }) => item.title && item.abstractText).map((item: { id: string; title: string; journalTitle?: string; pubYear?: string; pmcid?: string; abstractText?: string }) => ({ id: item.id, title: item.title, url: item.pmcid ? `https://pmc.ncbi.nlm.nih.gov/articles/${item.pmcid}/` : `https://europepmc.org/article/MED/${item.id}`, publisher: item.journalTitle ?? 'Europe PMC', type: 'journal' as const, published: item.pubYear, retrieved: new Date().toISOString().slice(0, 10), confidence: 'high' as const, snippet: item.abstractText?.slice(0, 700) }))
   let uniqueSources: BiologySource[] = [...new Map<string, BiologySource>(sources.map((source: BiologySource) => [source.id, source])).values()].slice(0, 8)
   if (uniqueSources.length < 3) {
     try {
