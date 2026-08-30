@@ -8,7 +8,7 @@ export const DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
 export function groqModel() {
   // Prefer the conventional key. GROQ_API_KEY_2 is kept as a backwards-compatible fallback,
   // but stale secondary keys can otherwise mask a valid primary key.
-  const apiKey = process.env.GROQ_API_KEY?.trim() || process.env.GROQ_API_KEY_2?.trim()
+  const apiKey = process.env.GROQ_API_KEY_2?.trim() || process.env.GROQ_API_KEY?.trim()
   if (!apiKey) {
     throw new Error("Groq is not configured. Add GROQ_API_KEY to the server environment.")
   }

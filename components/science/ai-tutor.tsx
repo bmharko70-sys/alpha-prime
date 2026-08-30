@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils"
 
 export function AiTutor() {
   const [input, setInput] = React.useState("")
-  const { messages, sendMessage, status, stop, setMessages, regenerate } = useChat({
+  const { messages, sendMessage, status, stop, setMessages, regenerate, error } = useChat({
     transport: new DefaultChatTransport({ api: "/api/chat" }),
   })
   const busy = status === "submitted" || status === "streaming"
@@ -57,7 +57,7 @@ export function AiTutor() {
           )}
           {status === "error" && (
             <div className="animate-in-fade-up flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-              <span>Groq could not answer. Confirm the server Groq key and model configuration, then retry.</span>
+              <span>{error?.message || "Groq could not answer. Check the server Groq key and model configuration, then retry."}</span>
               <Button type="button" variant="outline" size="sm" className="press-feedback" onClick={() => regenerate()}>
                 Retry
               </Button>
