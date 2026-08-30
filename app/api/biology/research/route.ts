@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { generateText } from 'ai'
 import type { BiologyResearch, BiologySource, ResearchEvent } from '@/lib/biology/types'
 import { groqModel } from '@/lib/ai/groq'
+import { groqRetrievalFallback, isUsableGroqFallback } from '@/lib/ai/retrieval'
 
 export const runtime = 'nodejs'
 const encoder = new TextEncoder()
@@ -25,11 +26,14 @@ async function retrieve(query: string): Promise<BiologySource[]> {
   return uniqueSources
 }
 
-function evidenceFallback(query: string, sources: BiologySource[]): BiologyResearch {
+async function evidenceFallback(query: string, sources: BiologySource[]): Promise<BiologyResearch> {
+  let aiBackground = ''
+  try { aiBackground = await groqRetrievalFallback(query, 'biology') } catch { /* Keep the evidence-only fallback usable when Groq is unavailable. */ }
+
   const first = sources.find((source) => source.snippet) ?? sources[0]
   const excerpt = first?.snippet ?? 'No abstract was returned by the live literature service.'
   const ids = sources.slice(0, 3).map((source) => source.id)
-  return { query, sources, title: query, summary: excerpt, definition: excerpt, importance: ['This explanation is taken directly from live source abstracts because Groq generation was unavailable.'], keyFacts: sources.slice(0, 4).map((source, index) => ({ label: `Evidence ${index + 1}`, value: source.snippet ?? source.title, evidence: [source.id] })), process: [], timeline: [], related: [], flashcards: sources.slice(0, 5).map((source) => ({ front: `What does this source report about ${query}?`, back: source.snippet ?? source.title, sourceIds: [source.id] })), questions: ids.length ? [{ prompt: `Which source is directly associated with the live evidence for “${query}”?`, options: [first.title, 'No source was retrieved', 'An unrelated textbook', 'A simulated record'], answer: 0, explanation: `The live result is ${first.publisher}, record ${first.id}.`, sourceIds: [first.id] }] : [], limitations: 'Groq generation was unavailable, so the app displayed live source evidence without AI synthesis.' }
+  return { query, sources, title: query, summary: isUsableGroqFallback(aiBackground) ? aiBackground : excerpt, definition: excerpt, importance: [isUsableGroqFallback(aiBackground) ? 'AI-generated orientation is shown because live literature returned limited evidence; verify it against scholarly sources.' : 'This explanation is taken directly from live source abstracts because Groq generation was unavailable.'], keyFacts: sources.slice(0, 4).map((source, index) => ({ label: `Evidence ${index + 1}`, value: source.snippet ?? source.title, evidence: [source.id] })), process: [], timeline: [], related: [], flashcards: sources.slice(0, 5).map((source) => ({ front: `What does this source report about ${query}?`, back: source.snippet ?? source.title, sourceIds: [source.id] })), questions: ids.length ? [{ prompt: `Which source is directly associated with the live evidence for “${query}”?`, options: [first.title, 'No source was retrieved', 'An unrelated textbook', 'A simulated record'], answer: 0, explanation: `The live result is ${first.publisher}, record ${first.id}.`, sourceIds: [first.id] }] : [], limitations: 'Groq generation was unavailable, so the app displayed live source evidence without AI synthesis.' }
 }
 
 async function synthesize(query: string, sources: BiologySource[]): Promise<BiologyResearch> {
@@ -40,7 +44,7 @@ async function synthesize(query: string, sources: BiologySource[]): Promise<Biol
     const parsed = JSON.parse(result.text) as Omit<BiologyResearch, 'query' | 'sources'>
     return { query, sources, ...parsed, flashcards: parsed.flashcards ?? [], questions: parsed.questions ?? [] }
   } catch {
-    return evidenceFallback(query, sources)
+    return await evidenceFallback(query, sources)
   }
 }
 
