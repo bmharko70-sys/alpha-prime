@@ -49,3 +49,36 @@ export type LabId="pendulum"|"spring"|"collision"|"buoyancy"|"projectile"
 export const labs:Array<{id:LabId;name:string;subtitle:string;symbol:string}>=[
  {id:"pendulum",name:"Pendulum",subtitle:"Nonlinear motion",symbol:"◌"},{id:"spring",name:"Spring & SHM",subtitle:"Oscillation and energy",symbol:"∿"},{id:"collision",name:"Collision",subtitle:"Momentum and impulse",symbol:"↔"},{id:"buoyancy",name:"Buoyancy",subtitle:"Archimedes principle",symbol:"↑"},{id:"projectile",name:"Projectile",subtitle:"Angled trajectory motion",symbol:"→"},]
 export const materials=[{name:"Cork",density:240},{name:"Oak Wood",density:700},{name:"Aluminum",density:2700},{name:"Iron",density:7874},{name:"Copper",density:8960},{name:"Lead",density:11340}]
+
+// Buoyancy domain models
+export interface BuoyancyState { t:number; y:number; vy:number; ay:number; force:number; apparentWeight:number }
+export const buoyancyStep = (y:number, vy:number, mass:number, volume:number, fluidDensity:number, g=9.81, dt=FIXED_DT) => {
+  const m=positive(mass), v=positive(volume), fd=positive(fluidDensity), gravity=positive(g)
+  const weight=m*gravity, buoyantForce=fd*gravity*v, netForce=buoyantForce-weight, ay=netForce/m
+  const nextVy=finite(vy)+ay*dt
+  return { y:finite(y)+nextVy*dt, vy:nextVy, ay, force:netForce, apparentWeight:weight-buoyantForce }
+}
+export const objectFloats = (objectDensity:number, fluidDensity:number) => objectDensity < positive(fluidDensity)
+export const displacedFluidMass = (volume:number, fluidDensity:number) => positive(volume)*positive(fluidDensity)
+
+// Spring domain models
+export interface HelicalSpringState { t:number; x:number; v:number; a:number; pe:number; ke:number }
+export const hookesLaw = (displacement:number, k:number) => -positive(k)*finite(displacement)
+export const oscillationPeriod = (k:number, mass:number) => 2*Math.PI*Math.sqrt(positive(mass)/positive(k))
+export const oscillationFrequency = (k:number, mass:number) => 1/oscillationPeriod(k,mass)
+export const seriesSpring = (k1:number, k2:number) => (positive(k1)*positive(k2))/(positive(k1)+positive(k2))
+export const parallelSpring = (k1:number, k2:number) => positive(k1)+positive(k2)
+
+// Geometry helpers
+export const sphereVolume = (radius:number) => (4/3)*Math.PI*positive(radius)**3
+export const cylinderVolume = (radius:number, height:number) => Math.PI*positive(radius)**2*positive(height)
+export const boxVolume = (width:number, depth:number, height:number) => positive(width)*positive(depth)*positive(height)
+
+// Data collection
+export const collectSample = (t:number, state:Record<string, number>):Sample => ({ t, ...state })
+export const computeStats = (samples:Sample[], key:string) => {
+  if(!samples.length) return {min:0,max:0,mean:0,range:0}
+  const values=samples.map(s=>finite(s[key]))
+  const min=Math.min(...values), max=Math.max(...values)
+  return {min,max,mean:values.reduce((a,b)=>a+b,0)/values.length,range:max-min}
+}
