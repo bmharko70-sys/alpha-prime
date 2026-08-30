@@ -1,6 +1,5 @@
 import { generateText } from "ai"
 import { groqModel } from "@/lib/ai/groq"
-import { groqRetrievalFallback } from "@/lib/ai/retrieval"
 
 export const runtime = "nodejs"
 
@@ -49,7 +48,7 @@ export async function POST(request: Request) {
   let sources: Source[] = []
   let retrievalStatus = "live"
   try { ({ context, sources } = await liveSources(query, domain)) } catch { retrievalStatus = "ai-fallback" }
-  if (!context) { retrievalStatus = "ai-fallback"; try { context = await groqRetrievalFallback(query, domain === "general" || domain === "geography" ? "history" : domain) } catch { return Response.json({ error: "Live retrieval and AI fallback are unavailable. Try again shortly." }, { status: 503 }) } }
+  if (!context) return Response.json({ error: "No usable web-derived information was found for this query. Try a more specific topic." }, { status: 404 })
   try {
     const result = await generateText({ model: groqModel(), temperature: 0.15, prompt: `You are a rigorous universal research assistant. Domain: ${domain}. Answer the query using only the supplied context. Distinguish sourced facts from inference, state uncertainty, and never invent citations, coordinates, dates, quotations, or statistics. Return JSON only: {"title":string,"answer":string,"keyPoints":string[],"limitations":string}. Query: ${query}\nCONTEXT:\n${context}` })
     const answer = JSON.parse(result.text)

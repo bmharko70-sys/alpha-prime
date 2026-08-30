@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Kbd } from "@/components/ui/kbd"
 import { buildSearchIndex, searchEntries, type SearchEntry, type SearchCategory } from "@/lib/science/search-index"
-import { Search, Atom, FlaskConical, Wrench, Beaker, FileText } from "lucide-react"
+import { Search, Atom, FlaskConical, Wrench, Beaker, FileText, Globe, Loader2 } from "lucide-react"
 
 const CATEGORY_META: Record<SearchCategory, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
   element: { label: "Elements", icon: Atom },
@@ -52,7 +52,26 @@ export function GlobalSearchDialog({
 }) {
   const router = useRouter()
   const [query, setQuery] = React.useState("")
+  const [webState, setWebState] = React.useState<{ loading: boolean; error?: string; data?: { domain: string; retrievalStatus: string; answer: { title: string; answer: string; keyPoints: string[]; limitations: string }; sources: { title: string; url: string; publisher: string }[] } }>({ loading: false })
   const index = React.useMemo(() => buildSearchIndex(), [])
+
+  React.useEffect(() => {
+    const topic = query.trim()
+    if (topic.length < 2) { setWebState({ loading: false }); return }
+    const controller = new AbortController()
+    const timer = window.setTimeout(async () => {
+      setWebState({ loading: true })
+      try {
+        const response = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ query: topic }), signal: controller.signal })
+        const data = await response.json()
+        if (!response.ok) throw new Error(data.error || "Web research is unavailable.")
+        setWebState({ loading: false, data })
+      } catch (error) {
+        if (!controller.signal.aborted) setWebState({ loading: false, error: error instanceof Error ? error.message : "Web research is unavailable." })
+      }
+    }, 450)
+    return () => { window.clearTimeout(timer); controller.abort() }
+  }, [query])
 
   React.useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -93,7 +112,15 @@ export function GlobalSearchDialog({
       <Command>
         <CommandInput placeholder="Search elements, molecules, tools…" value={query} onValueChange={setQuery} />
         <CommandList>
-          <CommandEmpty>No results found.</CommandEmpty>
+          <CommandEmpty>{webState.loading ? <span className="flex items-center gap-2"><Loader2 className="animate-spin" /> Searching live web sources…</span> : webState.error ? <span className="text-destructive">{webState.error}</span> : "No local results. Live research is still loading."}</CommandEmpty>
+          {webState.data && (
+            <CommandGroup heading="Live web research">
+              <CommandItem value={`web-${query}`} onSelect={() => { onOpenChange(false); router.push(`/research?q=${encodeURIComponent(query)}`) }}>
+                <Globe className="text-cyan-300" />
+                <div className="flex min-w-0 flex-col gap-1"><span className="truncate">{webState.data.answer.title}</span><span className="line-clamp-2 text-xs text-muted-foreground">{webState.data.answer.answer}</span><span className="text-[10px] text-cyan-300">{webState.data.sources.length} web sources · {webState.data.domain}</span></div>
+              </CommandItem>
+            </CommandGroup>
+          )}
           {Array.from(grouped.entries()).map(([category, entries]) => {
             const meta = CATEGORY_META[category]
             return (
