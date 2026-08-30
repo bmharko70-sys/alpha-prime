@@ -52,11 +52,18 @@ export const materials=[{name:"Cork",density:240},{name:"Oak Wood",density:700},
 
 // Buoyancy domain models
 export interface BuoyancyState { t:number; y:number; vy:number; ay:number; force:number; apparentWeight:number }
-export const buoyancyStep = (y:number, vy:number, mass:number, volume:number, fluidDensity:number, g=9.81, dt=FIXED_DT) => {
-  const m=positive(mass), v=positive(volume), fd=positive(fluidDensity), gravity=positive(g)
-  const weight=m*gravity, buoyantForce=fd*gravity*v, netForce=buoyantForce-weight, ay=netForce/m
+export const buoyancyStep = (y:number, vy:number, mass:number, volume:number, fluidDensity:number, g=9.81, dt=FIXED_DT, objectSize=Math.cbrt(positive(volume)), fluidSurface=1.2, fluidBottom=-1.8) => {
+  const m=positive(mass), v=positive(volume), fd=positive(fluidDensity), gravity=positive(g), size=positive(objectSize)
+  const bottom=finite(y)-size/2
+  const submergedFraction=clamp((fluidSurface-bottom)/size,0,1)
+  const submergedVolume=v*submergedFraction
+  const weight=m*gravity, buoyantForce=fd*gravity*submergedVolume, netForce=buoyantForce-weight, ay=netForce/m
   const nextVy=finite(vy)+ay*dt
-  return { y:finite(y)+nextVy*dt, vy:nextVy, ay, force:netForce, apparentWeight:weight-buoyantForce }
+  const nextY=finite(y)+nextVy*dt
+  const restingY=fluidSurface+size/2
+  const groundedY=fluidBottom+size/2
+  const clampedY=Math.max(groundedY,Math.min(restingY,nextY))
+  return { y:clampedY, vy:(clampedY===nextY?nextVy:0), ay, force:netForce, apparentWeight:weight-buoyantForce, submergedFraction, submergedVolume }
 }
 export const objectFloats = (objectDensity:number, fluidDensity:number) => objectDensity < positive(fluidDensity)
 export const displacedFluidMass = (volume:number, fluidDensity:number) => positive(volume)*positive(fluidDensity)
