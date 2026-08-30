@@ -17,6 +17,9 @@ export type BiologyQuestion = { prompt: string; options: string[]; answer: numbe
 
 export type BiologyResearch = {
   query: string
+  parsedQuery?: { originalQuery: string; normalizedQuery: string; keywords: string[]; intent: string; correction?: string }
+  comparison?: { headers: string[]; rows: string[][] }
+  sections?: { title: string; content: string; evidence: string[] }[]
   title: string
   summary: string
   definition: string
