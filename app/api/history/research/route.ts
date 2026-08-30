@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     const headers = { "User-Agent": "AcademiaO1/1.0 educational-research" }
     const [wikiResponse, geoResponse] = await Promise.all([
       fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(query.replaceAll(" ", "_"))}`, { headers, next: { revalidate: 3600 } }),
-      fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5& q=${encodeURIComponent(query)}`.replace("& q=", "&q="), { headers, next: { revalidate: 3600 } }),
+      fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&addressdetails=1&q=${encodeURIComponent(query)}`, { headers, next: { revalidate: 3600 } }),
     ])
     const wiki = wikiResponse.ok ? await wikiResponse.json() : null
     const places = geoResponse.ok ? await geoResponse.json() : []
