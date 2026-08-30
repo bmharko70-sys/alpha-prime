@@ -27,7 +27,7 @@ export type BiologyResearch = {
   definition: string
   importance: string[]
   keyFacts: { label: string; value: string; evidence: string[] }[]
-  process: { stage: string; detail: string }[]
+  process: { stage: string; detail: string; mechanism?: string; inputs?: string[]; outputs?: string[]; location?: string; dependencies?: string[]; evidence?: string[] }[]
   timeline: { date: string; event: string; detail: string }[]
   misconceptions?: { myth: string; correction: string }[]
   related: string[]
