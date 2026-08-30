@@ -275,8 +275,15 @@
 .surface-interactive {
   transition: transform var(--dur-base) var(--ease-lab), border-color var(--dur-base) var(--ease-lab), background-color var(--dur-base) var(--ease-lab), box-shadow var(--dur-base) var(--ease-lab);
 }
-.surface-interactive:hover { transform: translateY(-2px); }
-.surface-interactive:active { transform: translateY(0) scale(0.99); transition-duration: var(--dur-instant); }
+.surface-interactive:hover { transform: translateY(-3px); border-color: color-mix(in oklch, var(--primary) 32%, var(--border)); box-shadow: 0 12px 30px color-mix(in oklch, var(--background) 65%, transparent); }
+.surface-interactive:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.surface-interactive:active { transform: translateY(-1px) scale(0.99); transition-duration: var(--dur-instant); }
+
+/* A quiet depth treatment for layered scientific surfaces. */
+.surface-depth { box-shadow: 0 1px 0 color-mix(in oklch, var(--foreground) 5%, transparent), 0 18px 50px color-mix(in oklch, var(--background) 72%, transparent); }
+.surface-depth::after { content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; background: linear-gradient(135deg, color-mix(in oklch, var(--foreground) 5%, transparent), transparent 32%); opacity: .45; }
+
+.focus-ring:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
 
 /* Buttons and pressables */
 .press-feedback {

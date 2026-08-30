@@ -54,7 +54,7 @@ export function AppSidebar() {
                     render={<Link href={item.href} />}
                     isActive={pathname === item.href}
                     tooltip={item.title}
-                    className="relative transition-colors duration-200 active:translate-y-px"
+                    className="relative transition-all duration-300 hover:translate-x-0.5 active:translate-y-px data-[active=true]:bg-sidebar-accent/80 data-[active=true]:text-sidebar-accent-foreground"
                   >
                     <item.icon className="transition-transform duration-200" />
                     <span>{item.title}</span>
