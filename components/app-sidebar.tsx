@@ -26,7 +26,19 @@ export function AppSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" render={<Link href="/" />} className="press-feedback">
+            <SidebarMenuButton
+              size="lg"
+              render={
+                <Link
+                  href="/"
+                  onClick={(event) => {
+                    event.preventDefault()
+                    window.location.assign('/')
+                  }}
+                />
+              }
+              className="press-feedback"
+            >
               <div className="flex size-8 items-center justify-center border border-cyan-200/30 bg-cyan-200/10 text-cyan-100 transition-colors duration-200 group-hover:border-cyan-200/50 group-hover:bg-cyan-200/15">
                 <FlaskConical className="size-4" />
               </div>
