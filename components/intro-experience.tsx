@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { ArrowRight, Atom, FlaskConical, Waves } from 'lucide-react'
+import { BootLog } from '@/components/motion/boot-log'
+import { usePointerParallax } from '@/components/motion/use-pointer-parallax'
 
 const disciplines = [
   { label: 'CHEMISTRY', icon: FlaskConical },
@@ -9,10 +11,18 @@ const disciplines = [
   { label: 'BIOLOGY', icon: Atom },
 ]
 
+const bootLines = [
+  'Calibrating periodic dataset',
+  'Loading molecular render engine',
+  'Syncing simulation kernels',
+  'Establishing assistant link',
+]
+
 export function IntroExperience() {
   const [visible, setVisible] = useState(false)
   const [stage, setStage] = useState(0)
   const [reduced, setReduced] = useState(false)
+  const { ref: sceneRef, offset } = usePointerParallax<HTMLDivElement>()
 
   useEffect(() => {
     const seen = window.localStorage.getItem('academia-o1-intro-seen')
@@ -50,18 +60,33 @@ export function IntroExperience() {
   const progress = Math.round((stage / 4) * 100)
 
   return (
-    <div className="intro-experience fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-[#071018] text-slate-100" role="dialog" aria-label="Academia O1 initialization">
+    <div
+      ref={sceneRef}
+      className="intro-experience fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-[#071018] text-slate-100"
+      role="dialog"
+      aria-label="Academia O1 initialization"
+    >
       <button type="button" onClick={dismiss} aria-label="Close introduction" className="absolute right-5 top-5 z-10 border border-slate-700 px-3 py-2 font-mono text-[10px] tracking-[0.14em] text-slate-400 transition-colors hover:border-cyan-200/50 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200">CLOSE</button>
       <div className="intro-grid absolute inset-0 opacity-60" />
-      <div className="intro-orbit absolute left-1/2 top-1/2 size-[min(70vw,34rem)] -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/15" />
-      <div className="intro-orbit intro-orbit-delayed absolute left-1/2 top-1/2 size-[min(48vw,23rem)] -translate-x-1/2 -translate-y-1/2 rounded-full border border-amber-200/10" />
+      <div
+        className="intro-orbit absolute left-1/2 top-1/2 size-[min(70vw,34rem)] -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/15 transition-transform duration-300 ease-out"
+        style={{ transform: `translate(calc(-50% + ${offset.x * 14}px), calc(-50% + ${offset.y * 14}px))` }}
+      />
+      <div
+        className="intro-orbit intro-orbit-delayed absolute left-1/2 top-1/2 size-[min(48vw,23rem)] -translate-x-1/2 -translate-y-1/2 rounded-full border border-amber-200/10 transition-transform duration-300 ease-out"
+        style={{ transform: `translate(calc(-50% + ${offset.x * -22}px), calc(-50% + ${offset.y * -22}px))` }}
+      />
       <div className="relative flex w-full max-w-3xl flex-col items-center gap-10 px-6 text-center">
         <div className="flex items-center gap-3 text-xs font-medium tracking-[0.28em] text-cyan-200/70">
-          <span className="size-1.5 rounded-full bg-cyan-300 shadow-[0_0_16px_4px_rgba(103,232,249,0.55)]" />
+          <span className="size-1.5 rounded-full bg-cyan-300 shadow-[0_0_16px_4px_rgba(103,232,249,0.55)] status-breathe" />
           ACADEMIA O1 / LABORATORY OS
         </div>
-        <div className="relative flex size-32 items-center justify-center rounded-full border border-cyan-200/30 bg-cyan-200/[0.04] shadow-[0_0_70px_rgba(34,211,238,0.16)]">
+        <div
+          className="relative flex size-32 items-center justify-center rounded-full border border-cyan-200/30 bg-cyan-200/[0.04] shadow-[0_0_70px_rgba(34,211,238,0.16)] transition-transform duration-300 ease-out"
+          style={{ transform: `translate(${offset.x * 8}px, ${offset.y * 8}px)` }}
+        >
           <div className="absolute inset-3 rounded-full border border-dashed border-amber-100/25 animate-spin [animation-duration:12s]" />
+          <div className="absolute inset-0 rounded-full border border-cyan-200/10 animate-spin [animation-duration:8s] [animation-direction:reverse]" />
           <Atom className="size-12 text-cyan-200" strokeWidth={1.2} />
         </div>
         <div className="space-y-4">
@@ -70,6 +95,7 @@ export function IntroExperience() {
           <h1 className="font-mono text-3xl font-medium tracking-tight text-balance sm:text-5xl">Observe. Model. Understand.</h1>
           <p className="mx-auto max-w-lg text-sm leading-6 text-slate-400">A quiet instrument for exploring the structures and systems that make our world work.</p>
         </div>
+        <BootLog lines={bootLines} className="mx-auto w-full max-w-xs" />
         <div className="grid w-full max-w-xl grid-cols-3 gap-2 sm:gap-5">
           {disciplines.map(({ label, icon: Icon }, index) => (
             <div key={label} className={`intro-discipline flex flex-col items-center gap-3 border-t px-2 pt-4 transition-all duration-700 ${stage > index ? 'border-cyan-200/50 text-cyan-100' : 'border-slate-700/70 text-slate-600'}`}>
@@ -79,7 +105,7 @@ export function IntroExperience() {
             </div>
           ))}
         </div>
-        <button type="button" onClick={dismiss} className="group inline-flex items-center gap-3 border border-cyan-100/20 px-5 py-3 font-mono text-xs tracking-[0.16em] text-cyan-100 transition-colors hover:border-cyan-100/60 hover:bg-cyan-100/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/70">
+        <button type="button" onClick={dismiss} className="group press-feedback inline-flex items-center gap-3 border border-cyan-100/20 px-5 py-3 font-mono text-xs tracking-[0.16em] text-cyan-100 transition-colors hover:border-cyan-100/60 hover:bg-cyan-100/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/70">
           ENTER LABORATORY <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
         </button>
         <button type="button" onClick={dismiss} className="font-mono text-[10px] tracking-[0.16em] text-slate-500 hover:text-slate-300">SKIP INTRO</button>
