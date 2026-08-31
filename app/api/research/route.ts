@@ -1,5 +1,6 @@
 import { generateText } from "ai"
 import { groqModel } from "@/lib/ai/groq"
+import { getClientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit"
 
 export const runtime = "nodejs"
 
@@ -39,6 +40,9 @@ async function liveSources(query: string, domain: Domain): Promise<{ context: st
 }
 
 export async function POST(request: Request) {
+  const limitResult = rateLimit(`research:${getClientIp(request)}`, 20, 60_000)
+  if (!limitResult.ok) return rateLimitResponse(limitResult)
+
   let body: { query?: string }
   try { body = await request.json() } catch { return Response.json({ error: "Invalid JSON." }, { status: 400 }) }
   const query = typeof body.query === "string" ? body.query.trim().slice(0, 300) : ""

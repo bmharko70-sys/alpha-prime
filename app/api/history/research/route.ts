@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { makeCards, makeQuiz, sourceTypeFor, validateLocation, type HistoricalResearch, type GeoLocation } from "@/lib/history/types"
 import { groqRetrievalFallback } from "@/lib/ai/retrieval"
+import { getClientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -53,6 +54,9 @@ async function fetchFullExtract(title: string) {
 }
 
 export async function GET(request: Request) {
+  const limitResult = rateLimit(`history-research:${getClientIp(request)}`, 20, 60_000)
+  if (!limitResult.ok) return rateLimitResponse(limitResult)
+
   const query = new URL(request.url).searchParams.get("q")?.trim()
   if (!query || query.length < 2) return NextResponse.json({ error: "Enter a historical event, person, place, or geographic feature." }, { status: 400 })
   try {

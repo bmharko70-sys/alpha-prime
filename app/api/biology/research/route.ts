@@ -4,6 +4,7 @@ import type { BiologyResearch, BiologySource, ResearchEvent } from '@/lib/biolog
 import { groqModel } from '@/lib/ai/groq'
 import { parseBiologyQuery } from '@/lib/biology/query'
 import { groqRetrievalFallback, isUsableGroqFallback } from '@/lib/ai/retrieval'
+import { getClientIp, rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 const encoder = new TextEncoder()
@@ -66,6 +67,9 @@ async function synthesize(query: string, parsedQuery: ReturnType<typeof parseBio
 }
 
 export async function POST(request: NextRequest) {
+  const limitResult = rateLimit(`biology-research:${getClientIp(request)}`, 20, 60_000)
+  if (!limitResult.ok) return rateLimitResponse(limitResult)
+
   let body: any; try { body = await request.json() } catch { return Response.json({ error: 'Invalid JSON' }, { status: 400 }) }
   const query = typeof body.query === 'string' ? body.query.trim().slice(0, 240) : ''; if (query.length < 3) return Response.json({ error: 'Ask a Biology question with at least 3 characters.' }, { status: 400 })
   const stream = new ReadableStream({ async start(controller) { try { emit(controller, { stage: 'analyzing', message: 'Understanding your question and search terms', progress: 12 }); const parsed = parseBiologyQuery(query); emit(controller, { stage: 'searching', message: 'Searching academic sources and reference material', progress: 32 }); const sources = await retrieve(parsed); emit(controller, { stage: 'evaluating', message: `Evaluating ${sources.length} attributable records`, progress: 60 }); emit(controller, { stage: 'generating', message: 'Organizing an evidence-grounded study brief', progress: 86 }); const data = await synthesize(query, parsed, sources); emit(controller, { stage: 'complete', message: 'Evidence-backed Biology brief ready', progress: 100, data }); controller.close() } catch (e) { emit(controller, { stage: 'error', message: e instanceof Error ? e.message : 'Research failed', progress: 0 }); controller.close() } } })

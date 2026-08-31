@@ -6,10 +6,14 @@ import {
   type UIMessage,
 } from "ai"
 import { getAIErrorMessage, groqModel } from "@/lib/ai/groq"
+import { getClientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit"
 
 export const maxDuration = 30
 
 export async function POST(request: Request) {
+  const limitResult = rateLimit(`chat:${getClientIp(request)}`, 20, 60_000)
+  if (!limitResult.ok) return rateLimitResponse(limitResult)
+
   try {
     const body = (await request.json()) as { messages?: UIMessage[]; context?: string }
     if (!Array.isArray(body.messages) || body.messages.length === 0) {

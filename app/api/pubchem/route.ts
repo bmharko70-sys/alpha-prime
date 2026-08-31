@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { ELEMENTS } from "@/lib/science/data/elements"
 import type { MoleculeData } from "@/lib/science/types"
+import { getClientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit"
 
 const symbolByAtomicNumber = new Map(ELEMENTS.map((element) => [element.atomicNumber, element.symbol]))
 
 export async function GET(request: NextRequest) {
+  const limitResult = rateLimit(`pubchem:${getClientIp(request)}`, 30, 60_000)
+  if (!limitResult.ok) return rateLimitResponse(limitResult)
+
   const query = request.nextUrl.searchParams.get("q")?.trim()
   if (!query || query.length > 80) return NextResponse.json({ error: "Enter a valid molecule name or formula." }, { status: 400 })
   const url = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(query)}/record/JSON?record_type=3d`
