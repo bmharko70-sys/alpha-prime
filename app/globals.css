@@ -185,6 +185,17 @@
   to { transform: translate3d(2%, 1%, 0) rotate(8deg); }
 }
 
+@keyframes page-grid-drift {
+  from { transform: translate3d(0, 0, 0); opacity: .58; }
+  50% { opacity: .9; }
+  to { transform: translate3d(26px, 18px, 0); opacity: .68; }
+}
+
+@keyframes page-atmosphere-breathe {
+  0%, 100% { opacity: .72; }
+  50% { opacity: .96; }
+}
+
 @keyframes page-field-drift-reverse {
   from { transform: translate3d(2%, 1%, 0) rotate(0deg); }
   to { transform: translate3d(-2%, -1%, 0) rotate(-8deg); }
@@ -274,8 +285,8 @@
 }
 .intro-flash-line { animation: intro-flash-line 900ms ease-out both; }
 
-.page-motion { position: absolute; inset: 0; overflow: hidden; pointer-events: none; opacity: .82; }
-.page-motion-grid { position: absolute; inset: 0; background-image: linear-gradient(rgb(125 211 252 / 3%) 1px, transparent 1px), linear-gradient(90deg, rgb(125 211 252 / 3%) 1px, transparent 1px); background-size: 52px 52px; mask-image: linear-gradient(to bottom, black, transparent 75%); }
+.page-motion { position: absolute; inset: 0; overflow: hidden; pointer-events: none; opacity: .82; animation: page-atmosphere-breathe 12s ease-in-out infinite; }
+.page-motion-grid { position: absolute; inset: -52px; background-image: linear-gradient(rgb(125 211 252 / 3%) 1px, transparent 1px), linear-gradient(90deg, rgb(125 211 252 / 3%) 1px, transparent 1px); background-size: 52px 52px; mask-image: linear-gradient(to bottom, black, transparent 75%); animation: page-grid-drift 24s ease-in-out infinite alternate; }
 .page-motion-field { position: absolute; left: 50%; top: 6rem; width: min(80vw, 42rem); aspect-ratio: 1; transform: translateX(-50%); border-radius: 999px; border: 1px solid rgb(125 211 252 / 8%); filter: blur(.2px); animation: page-field-drift 34s ease-in-out infinite alternate; }
 .page-motion-field-two { width: min(60vw, 30rem); top: 10rem; border-color: rgb(253 230 138 / 7%); animation-name: page-field-drift-reverse; animation-duration: 43s; }
 .page-motion-node { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: rgb(165 243 252); box-shadow: 0 0 18px 5px rgb(103 232 249 / 28%); animation: page-node-pulse 4s ease-in-out infinite; }
@@ -400,7 +411,7 @@
 .animate-pulse-glow { animation: pulse-glow 1.6s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
-  .lab-orbit, .lab-orbit-two, .lab-particle, .intro-orbit, .page-motion-field, .page-motion-node, .route-transition-veil, .periodic-entry, .ai-thinking-nodes i, .animate-spin,
+  .lab-orbit, .lab-orbit-two, .lab-particle, .intro-orbit, .page-motion, .page-motion-grid, .page-motion-field, .page-motion-node, .route-transition-veil, .periodic-entry, .ai-thinking-nodes i, .animate-spin,
   .status-breathe, .status-spin, .animate-pulse-glow,
   .intro-scanline, .intro-particle, .intro-radar::before, .intro-title-glitch, .intro-module-flash, .intro-flash-line, .intro-exit, .intro-counter {
     animation: none !important;
