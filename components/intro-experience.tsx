@@ -39,10 +39,9 @@ export function IntroExperience() {
   )
 
   useEffect(() => {
-    const seen = window.localStorage.getItem('academia-o1-intro-seen')
     const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     setReduced(prefersReduced)
-    if (!seen) setVisible(true)
+    setVisible(true)
   }, [])
 
   useEffect(() => {
@@ -67,7 +66,6 @@ export function IntroExperience() {
   if (!visible) return null
 
   const dismiss = () => {
-    window.localStorage.setItem('academia-o1-intro-seen', 'true')
     if (reduced) {
       setVisible(false)
       return
