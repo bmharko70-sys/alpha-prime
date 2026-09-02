@@ -43,16 +43,28 @@ interface MoleculeModel3DProps {
 }
 
 export function MoleculeModel3D({ molecule, mode }: MoleculeModel3DProps) {
-  const atoms = molecule.atoms.filter((atom) => [atom.x, atom.y, atom.z].every(Number.isFinite))
+  // Keep the source indices stable. PubChem bond endpoints refer to the original
+  // atom array, so filtering atoms before resolving bonds can silently connect
+  // the wrong atoms when a record contains one invalid coordinate.
+  const validAtomIndices = new Set<number>()
+  const atoms = molecule.atoms.map((atom, index) => {
+    if ([atom.x, atom.y, atom.z].every(Number.isFinite)) validAtomIndices.add(index)
+    return atom
+  })
   const bonds = molecule.bonds.filter((bond) => {
-    const from = atoms[bond.a]
-    const to = atoms[bond.b]
-    return Boolean(from && to && [bond.a, bond.b].every(Number.isInteger) && [1, 2, 3].includes(bond.order))
+    return Boolean(
+      Number.isInteger(bond.a) &&
+        Number.isInteger(bond.b) &&
+        validAtomIndices.has(bond.a) &&
+        validAtomIndices.has(bond.b) &&
+        [1, 2, 3].includes(bond.order),
+    )
   })
 
   return (
     <group>
       {atoms.map((atom, i) => {
+        if (!validAtomIndices.has(i)) return null
         const radius = mode === "space-filling" ? vdwRadiusScale(atom.element) * 0.85 : mode === "wireframe" ? 0.08 : vdwRadiusScale(atom.element) * 0.32
         return (
           <mesh key={i} position={[atom.x, atom.y, atom.z]}>
