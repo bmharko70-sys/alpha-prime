@@ -18,12 +18,17 @@ export async function GET(request: NextRequest) {
     const record = await response.json()
     const compound = record?.PC_Compounds?.[0]
     const conformer = compound?.coords?.[0]?.conformers?.[0]
-    const atoms = compound?.atoms?.element?.map((atomicNumber: number, index: number) => ({
-      element: symbolByAtomicNumber.get(atomicNumber),
-      x: Number(conformer?.x?.[index]), y: Number(conformer?.y?.[index]), z: Number(conformer?.z?.[index]),
+    const atomicNumbers = compound?.atoms?.element
+    const xs = conformer?.x; const ys = conformer?.y; const zs = conformer?.z
+    const atomCount = Array.isArray(atomicNumbers) ? atomicNumbers.length : 0
+    const atoms = Array.from({ length: atomCount }, (_, index) => ({
+      element: symbolByAtomicNumber.get(Number(atomicNumbers[index])),
+      x: Number(xs?.[index]), y: Number(ys?.[index]), z: Number(zs?.[index]),
     }))
-    const bonds = compound?.bonds?.aid1?.map((a: number, index: number) => ({ a: a - 1, b: compound.bonds.aid2[index] - 1, order: compound.bonds.order[index] }))
-    if (!compound || !conformer || !atoms?.length || atoms.some((atom: { element?: string; x: number; y: number; z: number }) => !atom.element || ![atom.x, atom.y, atom.z].every(Number.isFinite)) || bonds?.some((bond: { a: number; b: number; order: number }) => bond.a < 0 || bond.b < 0 || ![1, 2, 3].includes(bond.order))) return NextResponse.json({ error: "PubChem returned an incomplete or invalid 3D structure." }, { status: 422 })
+    const aid1 = compound?.bonds?.aid1; const aid2 = compound?.bonds?.aid2; const orders = compound?.bonds?.order
+    const bonds = Array.isArray(aid1) && Array.isArray(aid2) && Array.isArray(orders) && aid1.length === aid2.length && aid1.length === orders.length
+      ? aid1.map((a: number, index: number) => ({ a: Number(a) - 1, b: Number(aid2[index]) - 1, order: Number(orders[index]) })) : []
+    if (!compound || !conformer || !atoms.length || atoms.some((atom) => !atom.element || ![atom.x, atom.y, atom.z].every(Number.isFinite)) || bonds.some((bond) => bond.a < 0 || bond.b < 0 || bond.a >= atoms.length || bond.b >= atoms.length || ![1, 2, 3].includes(bond.order))) return NextResponse.json({ error: "PubChem returned an incomplete or invalid 3D structure." }, { status: 422 })
     const molecule: MoleculeData = {
       name: query, formula: "Verified PubChem structure", molarMass: 0, geometry: "From experimental/conformer coordinates", bondAngle: null, polarity: "unknown", atoms, bonds, description: "3D coordinates and connectivity loaded from PubChem PUG REST.", source: "PubChem", sourceId: String(compound.id?.id?.cid ?? "unknown"),
     }

@@ -43,9 +43,28 @@ interface MoleculeModel3DProps {
 }
 
 export function MoleculeModel3D({ molecule, mode }: MoleculeModel3DProps) {
+  // Keep the source indices stable. PubChem bond endpoints refer to the original
+  // atom array, so filtering atoms before resolving bonds can silently connect
+  // the wrong atoms when a record contains one invalid coordinate.
+  const validAtomIndices = new Set<number>()
+  const atoms = molecule.atoms.map((atom, index) => {
+    if ([atom.x, atom.y, atom.z].every(Number.isFinite)) validAtomIndices.add(index)
+    return atom
+  })
+  const bonds = molecule.bonds.filter((bond) => {
+    return Boolean(
+      Number.isInteger(bond.a) &&
+        Number.isInteger(bond.b) &&
+        validAtomIndices.has(bond.a) &&
+        validAtomIndices.has(bond.b) &&
+        [1, 2, 3].includes(bond.order),
+    )
+  })
+
   return (
     <group>
-      {molecule.atoms.map((atom, i) => {
+      {atoms.map((atom, i) => {
+        if (!validAtomIndices.has(i)) return null
         const radius = mode === "space-filling" ? vdwRadiusScale(atom.element) * 0.85 : mode === "wireframe" ? 0.08 : vdwRadiusScale(atom.element) * 0.32
         return (
           <mesh key={i} position={[atom.x, atom.y, atom.z]}>
@@ -60,11 +79,11 @@ export function MoleculeModel3D({ molecule, mode }: MoleculeModel3DProps) {
         )
       })}
       {mode !== "space-filling" &&
-        molecule.bonds.map((bond, i) => (
+        bonds.map((bond, i) => (
           <Bond
             key={i}
-            from={molecule.atoms[bond.a]}
-            to={molecule.atoms[bond.b]}
+            from={atoms[bond.a]}
+            to={atoms[bond.b]}
             order={bond.order}
             wireframe={mode === "wireframe"}
           />
@@ -89,12 +108,15 @@ function Bond({
   const mid = start.clone().add(end).multiplyScalar(0.5)
   const direction = end.clone().sub(start)
   const length = direction.length()
+  const valid = Number.isFinite(length) && length > 0.0001
 
   const quaternion = React.useMemo(() => {
     const q = new THREE.Quaternion()
-    q.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().normalize())
+    if (valid) q.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().normalize())
     return q
-  }, [direction])
+  }, [direction, valid])
+
+  if (!valid) return null
 
   // Render multiple parallel cylinders offset perpendicular to the bond
   // axis for double/triple bonds — a standard ball-and-stick convention.
